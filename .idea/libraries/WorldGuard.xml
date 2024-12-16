@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="WorldGuard">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Downloads/WorldGuard.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

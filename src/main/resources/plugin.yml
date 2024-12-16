@@ -1,0 +1,9 @@
+name: VioTrap
+version: '${project.version}'
+main: org.migrate1337.viotrap.VioTrap
+api-version: '1.16'
+depend:
+  - WorldEdit
+  - WorldGuard
+commands:
+  viotrap:

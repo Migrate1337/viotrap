@@ -1,0 +1,42 @@
+trap:
+  schematic: "trap.schem"
+  display_name: "§6Трапка"
+  description: "§7Используйте, чтобы установить ловушку!"
+  type: "NETHERITE_SCRAP"
+  cooldown: 20
+  duration: 15
+  messages:
+    already_nearby: "Рядом уже установлена активная ловушка!"
+    cooldown_message: "Подождите {time} секунд перед следующим использованием." # {time} - Это время в секундах, если не хотите его использовать, просто уберите.
+    trap_failed: "Не удалось загрузить ловушку!"
+  sound:
+    type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
+    volume: 10.0f # Громкость звука.
+    pitch: 1.0f # Тон звука.
+
+
+plate:
+  display_name: "§6Пласт"
+  description: "§7Используйте, чтобы установить пласт!"
+  type: "NETHERITE_SCRAP"
+  cooldown: 20
+  duration: 5
+  messages:
+    already_nearby: "Рядом уже установлен активный пласт!"
+    cooldown_message: "Подождите {time} секунд перед следующим использованием." # {time} - Это время в секундах, если не хотите его использовать, просто уберите.
+    placement_failed: "Не удалось загрузить пласт!"
+  forward_schematic: "plate_forward.schem" # Значение yaw от -22.5 до 22.5(Значение pitch в этом случае не важно)
+  forward_left_schematic: "plate_forward_left.schem" # Значение yaw от 22.5 до 67.5(Значение pitch в этом случае не важно)
+  forward_right_schematic: "plate_forward_right.schem" # Значение yaw от -67.5 до -22.5(Значение pitch в этом случае не важно)
+  backward_schematic: "plate_backward.schem" # Значение yaw от 157.5 до 180 ИЛИ от -157.5 до -180(Значение pitch в этом случае не важно)
+  backward_left_schematic: "plate_backward_left.schem" # Значение yaw от 112.5 до 157.5(Значение pitch в этом случае не важно)
+  backward_right_schematic: "plate_backward_right.schem" # Значение yaw от -112.5 до -157.5(Значение pitch в этом случае не важно)
+  left_schematic: "plate_left.schem" # Значение yaw от 67.5 до 112.5(Значение pitch в этом случае не важно)
+  right_schematic: "plate_right.schem" # Значение yaw от -67.5 до -112.5(Значение pitch в этом случае не важно)
+  up_schematic: "plate_up.schem" # Значение pitch от -45 до -90(Значение yaw в этом случае не важно)
+  down_schematic: "plate.schem" # Значение pitch от 45 до 90(Значение yaw в этом случае не важно)
+  sound:
+    type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
+    volume: 10.0f # Громкость звука.
+    pitch: 1.0f # Тон звука.
+
