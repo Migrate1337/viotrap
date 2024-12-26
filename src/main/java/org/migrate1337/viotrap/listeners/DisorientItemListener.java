@@ -46,7 +46,6 @@ public class DisorientItemListener implements Listener {
             if (nearbyPlayer.equals(player)) continue;
 
             if (nearbyPlayer.getLocation().distance(playerLocation) <= radius) {
-                // Накладываем негативные эффекты
                 nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, durationSeconds * 20, 0));
                 nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, durationSeconds * 20, 1));
                 nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, durationSeconds * 20, 0));

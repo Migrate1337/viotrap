@@ -56,7 +56,7 @@ public class TrapItemListener implements Listener {
                 return;
             }
 
-            int cooldownTicks = plugin.getPlateCooldown() * 20;
+            int cooldownTicks = plugin.getTrapCooldown() * 20;
             player.setCooldown(item.getType(), cooldownTicks);
 
             Location location = player.getLocation();

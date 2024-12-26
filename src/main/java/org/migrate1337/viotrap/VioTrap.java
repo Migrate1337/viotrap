@@ -80,7 +80,6 @@ public final class VioTrap extends JavaPlugin {
         getConfig().options().copyDefaults(true);
         saveDefaultConfig();
 
-        // Загрузка значений из конфига
         loadTrapConfig();
         loadPlateConfig();
         loadRevealItemConfig();
@@ -88,7 +87,6 @@ public final class VioTrap extends JavaPlugin {
         getCommand("viotrap").setExecutor(new GiveItemCommand());
         getCommand("viotrap").setTabCompleter(new GiveItemTabCompleter());
 
-        // Регистрируем слушатель
         getServer().getPluginManager().registerEvents(new RevealItemListener(this), this);
         getServer().getPluginManager().registerEvents(new TrapItemListener(this), this);
         getServer().getPluginManager().registerEvents(new PlateItemListener(this), this);
