@@ -50,6 +50,21 @@ reveal_item:
   particle_type: CLOUD
   sound:
     type: "ENTITY_EXPERIENCE_ORB_PICKUP"
-    volume: 1.0
-    pitch: 1.0
+    volume: 1.0f
+    pitch: 1.0f
+
+disorient_item:
+  display_name: "§dДезориентация"
+  type: "ENDER_EYE"
+  description:
+    - "§7Используйте, чтобы наложить"
+    - "§7негативные эффекты на игроков поблизости."
+  cooldown: 10
+  effect_duration: 5
+  radius: 10
+  sound:
+    type: "ENTITY_WITHER_AMBIENT"
+    volume: 1.0f
+    pitch: 1.0f
+  particle_type: "SMOKE_LARGE"
 

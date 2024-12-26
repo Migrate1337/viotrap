@@ -4,10 +4,13 @@ import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.migrate1337.viotrap.commands.GiveItemCommand;
+import org.migrate1337.viotrap.listeners.DisorientItemListener;
 import org.migrate1337.viotrap.listeners.PlateItemListener;
 import org.migrate1337.viotrap.listeners.RevealItemListener;
 import org.migrate1337.viotrap.listeners.TrapItemListener;
 import org.migrate1337.viotrap.utils.GiveItemTabCompleter;
+
+import java.util.List;
 
 public final class VioTrap extends JavaPlugin {
 
@@ -55,7 +58,7 @@ public final class VioTrap extends JavaPlugin {
 
     private String revealItemDisplayName;
 
-    private String revealItemDescription;
+    private List<String> revealItemDescription;
 
     private int revealItemCooldown;
 
@@ -89,6 +92,7 @@ public final class VioTrap extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RevealItemListener(this), this);
         getServer().getPluginManager().registerEvents(new TrapItemListener(this), this);
         getServer().getPluginManager().registerEvents(new PlateItemListener(this), this);
+        getServer().getPluginManager().registerEvents(new DisorientItemListener(this), this);
     }
 
     private void loadTrapConfig() {
@@ -132,7 +136,7 @@ public final class VioTrap extends JavaPlugin {
     private void loadRevealItemConfig() {
         revealItemType = config.getString("reveal_item.type");
         revealItemDisplayName = config.getString("reveal_item.display_name");
-        revealItemDescription = config.getString("reveal_item.description");
+        revealItemDescription = config.getStringList("disorient_item.description");
         revealItemCooldown = config.getInt("reveal_item.cooldown");
         revealItemRadius = config.getInt("reveal_item.radius");
         revealItemSoundType = config.getString("reveal_item.sound.type", "ENTITY_EXPERIENCE_ORB_PICKUP");
@@ -272,7 +276,7 @@ public final class VioTrap extends JavaPlugin {
         return revealItemDisplayName;
     }
 
-    public String getRevealItemDescription() {
+    public List<String> getRevealItemDescription() {
         return revealItemDescription;
     }
 
@@ -299,4 +303,41 @@ public final class VioTrap extends JavaPlugin {
     public String getRevealItemParticleType() { return revealItemParticleType; }
 
     public int getRevealItemGlowDuration() { return revealItemGlowDuration;}
+    public int getDisorientItemCooldown() {
+        return getConfig().getInt("disorient_item.cooldown", 10);
+    }
+
+    public int getDisorientItemEffectDuration() {
+        return getConfig().getInt("disorient_item.effect_duration", 5);
+    }
+
+    public int getDisorientItemRadius() {
+        return getConfig().getInt("disorient_item.radius", 10);
+    }
+
+    public String getDisorientItemSoundType() {
+        return getConfig().getString("disorient_item.sound.type", "ENTITY_WITHER_AMBIENT");
+    }
+
+    public float getDisorientItemSoundVolume() {
+        return (float) getConfig().getDouble("disorient_item.sound.volume", 1.0f);
+    }
+
+    public float getDisorientItemSoundPitch() {
+        return (float) getConfig().getDouble("disorient_item.sound.pitch", 1.0f);
+    }
+
+    public String getDisorientItemParticleType() {
+        return getConfig().getString("disorient_item.particle_type", "SMOKE_LARGE");
+    }
+    public String getDisorientItemName() {
+        return config.getString("disorient_item.display_name", "Дезориентация");
+    }
+
+    public String getDisorientItemType() {
+        return config.getString("disorient_item.type", "ENDER_EYE");
+    }
+    public List<String> getDisorientItemDescription() {
+        return config.getStringList("disorient_item.description");
+    }
 }

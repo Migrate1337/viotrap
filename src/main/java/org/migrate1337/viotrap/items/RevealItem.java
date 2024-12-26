@@ -15,7 +15,7 @@ public class RevealItem {
 
         if (meta != null) {
             meta.setDisplayName(VioTrap.getPlugin().getRevealItemDisplayName());
-            meta.setLore(Collections.singletonList(VioTrap.getPlugin().getRevealItemDescription()));
+            meta.setLore(VioTrap.getPlugin().getRevealItemDescription());
             item.setItemMeta(meta);
         }
         return item;

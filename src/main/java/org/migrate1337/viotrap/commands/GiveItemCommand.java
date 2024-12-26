@@ -6,6 +6,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.migrate1337.viotrap.items.DisorientItem;
 import org.migrate1337.viotrap.items.RevealItem;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.items.PlateItem;
@@ -61,6 +62,8 @@ public class GiveItemCommand implements CommandExecutor {
                 return PlateItem.getPlateItem(amount);
             case "явная_пыль":
                 return RevealItem.getRevealItem(amount);
+            case "дезориентация":
+                return DisorientItem.getDisorientItem(amount);
             default:
                 return null;
         }
