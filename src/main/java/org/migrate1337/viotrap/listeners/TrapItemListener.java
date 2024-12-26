@@ -46,36 +46,27 @@ public class TrapItemListener implements Listener {
     @EventHandler
     public void onPlayerUseTrap(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
         ItemStack item = player.getInventory().getItemInMainHand();
 
         if (item != null && TrapItem.getUniqueId(item) != null &&
                 (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
 
-            long currentTime = System.currentTimeMillis();
-            long cooldownMillis = plugin.getPlateCooldown() * 1000L; // Переводим секунды в миллисекунды
-
-            if (lastUseTime.containsKey(playerId)) {
-                long lastUsed = lastUseTime.get(playerId);
-                long timeRemaining = cooldownMillis - (currentTime - lastUsed);
-
-                if (timeRemaining > 0) {
-                    long secondsRemaining = timeRemaining / 1000; // Переводим в секунды для вывода
-                    player.sendMessage(plugin.getTrapMessageCooldown().replace("{time}", String.valueOf(secondsRemaining)));
-                    return;
-                }
+            if (player.hasCooldown(item.getType())) {
+                player.sendMessage(plugin.getTrapMessageCooldown());
+                return;
             }
 
-            lastUseTime.put(playerId, currentTime);
+            int cooldownTicks = plugin.getPlateCooldown() * 20;
+            player.setCooldown(item.getType(), cooldownTicks);
 
             Location location = player.getLocation();
             if (isRegionNearby(location, player.getWorld().getName())) {
                 player.sendMessage(plugin.getTrapMessageNearby());
                 return;
             }
+
             String sound = plugin.getTrapSoundType();
             player.playSound(location, Sound.valueOf(sound), plugin.getTrapSoundVolume(), plugin.getTrapSoundPitch());
-            lastUseTime.put(playerId, currentTime);
             item.setAmount(item.getAmount() - 1);
 
             try {
@@ -90,13 +81,14 @@ public class TrapItemListener implements Listener {
 
                 try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(player.getWorld()))) {
                     BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-                    saveReplacedBlocks(playerId, location, clipboard);
+                    saveReplacedBlocks(player.getUniqueId(), location, clipboard);
 
                     ForwardExtentCopy copy = new ForwardExtentCopy(clipboard, clipboard.getRegion(), clipboard.getOrigin(), editSession, pastePosition);
                     Operations.complete((Operation) copy);
                     int durationTicks = plugin.getTrapDuration() * 20;
+
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        restoreBlocks(playerId);
+                        restoreBlocks(player.getUniqueId());
                         removeTrapRegion(player.getName() + "_trap", location);
                     }, durationTicks);
                 }
@@ -107,6 +99,7 @@ public class TrapItemListener implements Listener {
             }
         }
     }
+
 
     private boolean isRegionNearby(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();

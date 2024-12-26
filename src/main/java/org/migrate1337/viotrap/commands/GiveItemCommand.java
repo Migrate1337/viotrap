@@ -6,6 +6,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.migrate1337.viotrap.items.RevealItem;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.items.PlateItem;
 
@@ -13,15 +14,14 @@ public class GiveItemCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+
         if (!(sender instanceof Player)) {
             sender.sendMessage("Эту команду может выполнить только игрок!");
             return false;
         }
 
-        Player player = (Player) sender;
-
-        // Проверка на правильное количество аргументов
         if (args.length != 4 || !args[0].equalsIgnoreCase("give")) {
+            sender.sendMessage("Использование: /viotrap give <игрок> <предмет> <количество>");
             return false;
         }
 
@@ -32,59 +32,37 @@ public class GiveItemCommand implements CommandExecutor {
         try {
             amount = Integer.parseInt(args[3]);
         } catch (NumberFormatException e) {
+            sender.sendMessage("Количество должно быть числом.");
             return false;
         }
 
-        // Находим игрока, которому выдадим предмет
         Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
         if (targetPlayer == null || !targetPlayer.isOnline()) {
             sender.sendMessage("Игрок не найден или не в сети.");
             return false;
         }
 
-        // Создаём предмет на основе имени
-        ItemStack itemStack = null;
-
-        if ("Трапка".equalsIgnoreCase(itemName)) {
-            itemStack = TrapItem.getTrapItem(amount);
-        } else if ("Пласт".equalsIgnoreCase(itemName)) {
-            itemStack = PlateItem.getPlateItem(amount);
-        }
-
-        // Проверка, что предмет был создан
+        ItemStack itemStack = createItemByName(itemName, amount);
         if (itemStack == null) {
-            sender.sendMessage("Предмет с таким именем не найден.");
+            sender.sendMessage("Предмет с таким именем не найден: " + itemName);
             return false;
         }
 
-        // Проверка имени предмета с использованием метаданных
-        if (!isItemNameValid(itemStack, itemName)) {
-            sender.sendMessage("Предмет с таким именем не найден.");
-            return false;
-        }
-
-        // Выдаем предмет целевому игроку
         targetPlayer.getInventory().addItem(itemStack);
-        sender.sendMessage("Игроку " + targetPlayerName + " выдано " + itemName + " " + amount + "шт.");
+        sender.sendMessage("Игроку " + targetPlayerName + " выдано " + amount + "x " + itemName + ".");
         return true;
     }
 
-    // Метод для проверки имени предмета через ItemMeta
-    private boolean isItemNameValid(ItemStack item, String itemName) {
-        if (item == null || !item.hasItemMeta()) {
-            return false;
+    private ItemStack createItemByName(String itemName, int amount) {
+        switch (itemName.toLowerCase()) {
+            case "трапка":
+                return TrapItem.getTrapItem(amount);
+            case "пласт":
+                return PlateItem.getPlateItem(amount);
+            case "явная_пыль":
+                return RevealItem.getRevealItem(amount);
+            default:
+                return null;
         }
-
-        // Извлекаем метаданные
-        String displayName = item.getItemMeta().getDisplayName();
-
-        // Проверяем, что название предмета соответствует ожидаемому
-        if ("Трапка".equalsIgnoreCase(itemName)) {
-            return displayName.equals("§6Трапка");
-        } else if ("Пласт".equalsIgnoreCase(itemName)) {
-            return displayName.equals("§6Пласт");
-        }
-
-        return false;
     }
 }

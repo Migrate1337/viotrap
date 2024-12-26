@@ -1,8 +1,6 @@
 package org.migrate1337.viotrap.items;
 
 import org.bukkit.Material;
-import org.bukkit.entity.HumanEntity;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;

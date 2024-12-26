@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.migrate1337.viotrap.commands.GiveItemCommand;
 import org.migrate1337.viotrap.listeners.PlateItemListener;
+import org.migrate1337.viotrap.listeners.RevealItemListener;
 import org.migrate1337.viotrap.listeners.TrapItemListener;
 import org.migrate1337.viotrap.utils.GiveItemTabCompleter;
 
@@ -50,6 +51,25 @@ public final class VioTrap extends JavaPlugin {
     private String plateUpSchematic;
     private String plateDownSchematic;
 
+    private String revealItemType;
+
+    private String revealItemDisplayName;
+
+    private String revealItemDescription;
+
+    private int revealItemCooldown;
+
+    private int revealItemRadius;
+
+    private String revealItemSoundType;
+
+    private float revealItemSoundVolume;
+
+    private float revealItemSoundPitch;
+
+    private String revealItemParticleType;
+
+    private int revealItemGlowDuration;
     @Override
     public void onEnable() {
         plugin = this;
@@ -60,11 +80,13 @@ public final class VioTrap extends JavaPlugin {
         // Загрузка значений из конфига
         loadTrapConfig();
         loadPlateConfig();
+        loadRevealItemConfig();
 
         getCommand("viotrap").setExecutor(new GiveItemCommand());
         getCommand("viotrap").setTabCompleter(new GiveItemTabCompleter());
 
         // Регистрируем слушатель
+        getServer().getPluginManager().registerEvents(new RevealItemListener(this), this);
         getServer().getPluginManager().registerEvents(new TrapItemListener(this), this);
         getServer().getPluginManager().registerEvents(new PlateItemListener(this), this);
     }
@@ -107,7 +129,18 @@ public final class VioTrap extends JavaPlugin {
         plateUpSchematic = config.getString("plate.up_schematic", "plate_up.schem");
         plateDownSchematic = config.getString("plate.down_schematic", "plate.schem");
     }
-
+    private void loadRevealItemConfig() {
+        revealItemType = config.getString("reveal_item.type");
+        revealItemDisplayName = config.getString("reveal_item.display_name");
+        revealItemDescription = config.getString("reveal_item.description");
+        revealItemCooldown = config.getInt("reveal_item.cooldown");
+        revealItemRadius = config.getInt("reveal_item.radius");
+        revealItemSoundType = config.getString("reveal_item.sound.type", "ENTITY_EXPERIENCE_ORB_PICKUP");
+        revealItemSoundVolume = (float) config.getDouble("reveal_item.sound.volume", 1.0);
+        revealItemSoundPitch = (float) config.getDouble("reveal_item.sound.pitch", 1.0);
+        revealItemParticleType = config.getString("reveal_item.particle_type", "ENDROD");
+        revealItemGlowDuration = config.getInt("reveal_item.glow_duration");
+    }
     public static VioTrap getPlugin() {
         return plugin;
     }
@@ -230,4 +263,40 @@ public final class VioTrap extends JavaPlugin {
     public String getPlateDownSchematic() {
         return plateDownSchematic;
     }
+
+    public String getRevealItemType() {
+        return revealItemType;
+    }
+
+    public String getRevealItemDisplayName() {
+        return revealItemDisplayName;
+    }
+
+    public String getRevealItemDescription() {
+        return revealItemDescription;
+    }
+
+    public int getRevealItemCooldown() {
+        return revealItemCooldown;
+    }
+
+    public int getRevealItemRadius() {
+        return revealItemRadius;
+    }
+
+    public String getRevealItemSoundType() {
+        return revealItemSoundType;
+    }
+
+    public float getRevealItemSoundVolume() {
+        return revealItemSoundVolume;
+    }
+
+    public float getRevealItemSoundPitch() {
+        return revealItemSoundPitch;
+    }
+
+    public String getRevealItemParticleType() { return revealItemParticleType; }
+
+    public int getRevealItemGlowDuration() { return revealItemGlowDuration;}
 }

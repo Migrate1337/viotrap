@@ -23,6 +23,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.PlateItem;
 
@@ -43,35 +44,29 @@ public class PlateItemListener implements Listener {
     @EventHandler
     public void onPlayerUsePlate(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
         ItemStack item = player.getInventory().getItemInMainHand();
 
         if (item != null && PlateItem.getUniqueId(item) != null &&
                 (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
 
-            long currentTime = System.currentTimeMillis();
-            long cooldownMillis = plugin.getPlateCooldown() * 1000L; // Переводим секунды в миллисекунды
-
-            if (lastUseTime.containsKey(playerId)) {
-                long lastUsed = lastUseTime.get(playerId);
-                long timeRemaining = cooldownMillis - (currentTime - lastUsed);
-
-                if (timeRemaining > 0) {
-                    long secondsRemaining = timeRemaining / 1000; // Переводим в секунды для вывода
-                    player.sendMessage(plugin.getPlateMessageCooldown().replace("{time}", String.valueOf(secondsRemaining)));
-                    return;
-                }
+            if (player.hasCooldown(item.getType())) {
+                player.sendMessage(plugin.getPlateMessageCooldown());
+                return;
             }
 
-            lastUseTime.put(playerId, currentTime);
+            int cooldownTicks = plugin.getPlateCooldown() * 20;
+            player.setCooldown(item.getType(), cooldownTicks);
 
             Location location = player.getLocation();
             if (isRegionNearby(location, player.getWorld().getName())) {
                 player.sendMessage(plugin.getPlateMessageNearby());
                 return;
             }
+
             String sound = plugin.getPlateSoundType();
             player.playSound(location, Sound.valueOf(sound), plugin.getPlateSoundVolume(), plugin.getPlateSoundPitch());
+            item.setAmount(item.getAmount() - 1);
+
             try {
                 DirectionInfo directionInfo = getOffsetsAndSchematic(player);
 
@@ -84,30 +79,27 @@ public class PlateItemListener implements Listener {
                 }
 
                 try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(player.getWorld()))) {
-
                     BlockVector3 pastePosition = BlockVector3.at(
                             location.getBlockX(),
                             location.getBlockY(),
                             location.getBlockZ()
                     );
 
-                    // Создаем обработчик для схематики
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
 
-                    // Устанавливаем операцию вставки схемы, исключая воздух
                     Operations.complete(
                             holder
                                     .createPaste(editSession)
                                     .to(pastePosition)
-                                    .ignoreAirBlocks(true) // Игнорировать воздух
+                                    .ignoreAirBlocks(true)
                                     .build()
                     );
-                    saveReplacedBlocks(playerId, location, clipboard, directionInfo.angX, directionInfo.angY, directionInfo.angZ);
+                    saveReplacedBlocks(player.getUniqueId(), location, clipboard, directionInfo.angX, directionInfo.angY, directionInfo.angZ);
                     createPlateRegion(player, location, directionInfo.pos1X, directionInfo.pos1Y, directionInfo.pos1Z, directionInfo.pos2X, directionInfo.pos2Y, directionInfo.pos2Z);
-                    int durationTicks = plugin.getPlateDuration() * 20;
 
+                    int durationTicks = plugin.getPlateDuration() * 20;
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        restoreBlocks(playerId);
+                        restoreBlocks(player.getUniqueId());
                         removePlateRegion(player, location);
                     }, durationTicks);
                 }
@@ -116,14 +108,13 @@ public class PlateItemListener implements Listener {
                 player.sendMessage(plugin.getPlateMessageFailed());
                 e.printStackTrace();
             }
-
-            item.setAmount(item.getAmount() - 1);
         }
     }
 
+
+
     private boolean isRegionNearby(Location location, String worldName) {
         for (ProtectedCuboidRegion region : activePlates.values()) {
-            // Получаем минимальные и максимальные координаты региона
             int minX = region.getMinimumPoint().getBlockX() - 3;
             int minY = region.getMinimumPoint().getBlockY() - 3;
             int minZ = region.getMinimumPoint().getBlockZ() - 3;
@@ -132,7 +123,6 @@ public class PlateItemListener implements Listener {
             int maxY = region.getMaximumPoint().getBlockY() + 3;
             int maxZ = region.getMaximumPoint().getBlockZ() + 3;
 
-            // Проверяем, находится ли локация внутри расширенного региона
             if (location.getBlockX() >= minX && location.getBlockX() <= maxX &&
                     location.getBlockY() >= minY && location.getBlockY() <= maxY &&
                     location.getBlockZ() >= minZ && location.getBlockZ() <= maxZ) {

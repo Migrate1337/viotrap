@@ -18,7 +18,7 @@ public class PlateItem {
     }
 
     public static ItemStack getPlateItem(int amount) {
-        ItemStack item = new ItemStack(Material.ORANGE_DYE, amount);
+        ItemStack item = new ItemStack(Material.valueOf(VioTrap.getPlugin().getPlateType()), amount);
         ItemMeta meta = item.getItemMeta();
         meta.setLore(java.util.Collections.singletonList(VioTrap.getPlugin().getPlateDescription()));
         if (meta != null) {
