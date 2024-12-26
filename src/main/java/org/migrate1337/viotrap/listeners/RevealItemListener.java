@@ -11,6 +11,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.RevealItem;
 
@@ -46,10 +47,23 @@ public class RevealItemListener implements Listener {
             if (nearbyPlayer.equals(player)) continue;
 
             if (nearbyPlayer.getLocation().distance(playerLocation) <= radius) {
-                if (nearbyPlayer.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+                boolean wasInvisible = nearbyPlayer.hasPotionEffect(PotionEffectType.INVISIBILITY);
+
+                // Убираем невидимость и добавляем свечение
+                if (wasInvisible) {
                     nearbyPlayer.removePotionEffect(PotionEffectType.INVISIBILITY);
                 }
                 nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, durationSeconds * 20, 0));
+
+                // Возвращаем невидимость через время свечения
+                if (wasInvisible) {
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 99999, 0, false, false));
+                        }
+                    }.runTaskLater(plugin, durationSeconds * 20L);
+                }
             }
         }
 
@@ -62,6 +76,7 @@ public class RevealItemListener implements Listener {
 
         showParticleCircle(playerLocation, radius, Particle.valueOf(VioTrap.getPlugin().getRevealItemParticleType()));
     }
+
     private void showParticleCircle(Location center, double radius, Particle particle) {
         int points = 100;
         double increment = (2 * Math.PI) / points;
