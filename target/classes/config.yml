@@ -68,3 +68,32 @@ disorient_item:
     pitch: 1.0f
   particle_type: "SMOKE_LARGE"
 
+divine_aura:
+  name: "Божья Аура"
+  material: "GHAST_TEAR"
+  description:
+    - "Используйте, чтобы снять с себя"
+    - "негативные эффекты и получить благословение."
+  cooldown: 10 # Кулдаун в секундах
+  positive_effects:
+    - REGENERATION:
+        duration: 10
+        amplifier: 1   # Уровень эффекта
+    - ABSORPTION:
+        duration: 10
+        amplifier: 1
+  negative_effects:
+    - WEAKNESS
+    - SLOW
+    - BLINDNESS
+    - HARM
+    - CONFUSION
+    - WITHER
+    - BAD_OMEN
+    - NAUSEA
+    - POISON
+  sound:
+    type: "ENTITY_WITHER_AMBIENT"
+    volume: 1.0f
+    pitch: 1.0f
+  particle_type: "SMOKE_LARGE"

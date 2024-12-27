@@ -6,10 +6,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.migrate1337.viotrap.items.DisorientItem;
-import org.migrate1337.viotrap.items.RevealItem;
-import org.migrate1337.viotrap.items.TrapItem;
-import org.migrate1337.viotrap.items.PlateItem;
+import org.migrate1337.viotrap.VioTrap;
+import org.migrate1337.viotrap.items.*;
 
 public class GiveItemCommand implements CommandExecutor {
 
@@ -64,6 +62,8 @@ public class GiveItemCommand implements CommandExecutor {
                 return RevealItem.getRevealItem(amount);
             case "дезориентация":
                 return DisorientItem.getDisorientItem(amount);
+            case "божья_аура":
+                return DivineAuraItem.getDivineAuraItem(amount, VioTrap.getPlugin());
             default:
                 return null;
         }

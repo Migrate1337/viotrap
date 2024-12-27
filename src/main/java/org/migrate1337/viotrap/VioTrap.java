@@ -3,14 +3,13 @@ package org.migrate1337.viotrap;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffectType;
 import org.migrate1337.viotrap.commands.GiveItemCommand;
-import org.migrate1337.viotrap.listeners.DisorientItemListener;
-import org.migrate1337.viotrap.listeners.PlateItemListener;
-import org.migrate1337.viotrap.listeners.RevealItemListener;
-import org.migrate1337.viotrap.listeners.TrapItemListener;
+import org.migrate1337.viotrap.listeners.*;
 import org.migrate1337.viotrap.utils.GiveItemTabCompleter;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public final class VioTrap extends JavaPlugin {
 
@@ -73,6 +72,16 @@ public final class VioTrap extends JavaPlugin {
     private String revealItemParticleType;
 
     private int revealItemGlowDuration;
+
+    private String divineAuraItemName;
+    private Material divineAuraItemMaterial;
+    private List<String> divineAuraItemDescription;
+    private int divineAuraItemCooldown;
+    private String divineAuraParticleType;
+    private String divineAuraSoundType;
+    private float divineAuraSoundVolume;
+    private float divineAuraSoundPitch;
+
     @Override
     public void onEnable() {
         plugin = this;
@@ -83,6 +92,7 @@ public final class VioTrap extends JavaPlugin {
         loadTrapConfig();
         loadPlateConfig();
         loadRevealItemConfig();
+        loadDivineAuraItemConfig();
 
         getCommand("viotrap").setExecutor(new GiveItemCommand());
         getCommand("viotrap").setTabCompleter(new GiveItemTabCompleter());
@@ -91,6 +101,7 @@ public final class VioTrap extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TrapItemListener(this), this);
         getServer().getPluginManager().registerEvents(new PlateItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DisorientItemListener(this), this);
+        getServer().getPluginManager().registerEvents(new DivineAuraItemListener(this), this);
     }
 
     private void loadTrapConfig() {
@@ -143,6 +154,19 @@ public final class VioTrap extends JavaPlugin {
         revealItemParticleType = config.getString("reveal_item.particle_type", "ENDROD");
         revealItemGlowDuration = config.getInt("reveal_item.glow_duration");
     }
+
+    private void loadDivineAuraItemConfig() {
+        divineAuraItemName = config.getString("items.divine_aura.name", "Божья Аура");
+        divineAuraItemMaterial = Material.getMaterial(config.getString("items.divine_aura.material", "GHAST_TEAR"));
+        divineAuraItemDescription = config.getStringList("items.divine_aura.description");
+        divineAuraItemCooldown = config.getInt("items.divine_aura.cooldown", 10);
+        divineAuraParticleType = config.getString("items.divine_aura.particle_type", "VILLAGER_HAPPY");
+        divineAuraSoundType = config.getString("items.divine_aura.sound.type", "ENTITY_PLAYER_LEVELUP");
+        divineAuraSoundVolume = (float) config.getDouble("items.divine_aura.sound.volume", 1.0);
+        divineAuraSoundPitch = (float) config.getDouble("items.divine_aura.sound.pitch", 1.0);
+    }
+
+
     public static VioTrap getPlugin() {
         return plugin;
     }
@@ -337,5 +361,37 @@ public final class VioTrap extends JavaPlugin {
     }
     public List<String> getDisorientItemDescription() {
         return config.getStringList("disorient_item.description");
+    }
+
+    public String getDivineAuraItemName() {
+        return divineAuraItemName;
+    }
+
+    public Material getDivineAuraItemMaterial() {
+        return divineAuraItemMaterial;
+    }
+
+    public List<String> getDivineAuraItemDescription() {
+        return divineAuraItemDescription;
+    }
+
+    public int getDivineAuraItemCooldown() {
+        return divineAuraItemCooldown;
+    }
+
+    public String getDivineAuraItemParticleType() {
+        return divineAuraParticleType;
+    }
+
+    public String getDivineAuraItemSoundType() {
+        return divineAuraSoundType;
+    }
+
+    public float getDivineAuraItemSoundVolume() {
+        return divineAuraSoundVolume;
+    }
+
+    public float getDivineAuraItemSoundPitch() {
+        return divineAuraSoundPitch;
     }
 }

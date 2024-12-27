@@ -164,9 +164,6 @@ public class TrapItemListener implements Listener {
         com.sk89q.worldedit.math.BlockVector3 max = BlockVector3.at(location.getBlockX() + 2, location.getBlockY() + 3, location.getBlockZ() + 2);
 
         ProtectedCuboidRegion region = new ProtectedCuboidRegion(player.getName() + "_trap", min, max);
-        DefaultDomain domain = new DefaultDomain();
-        domain.addPlayer(player.getUniqueId());
-        region.setOwners(domain);
 
         regionManager.addRegion(region);
         activeTraps.put(player.getName() + "_trap", region);

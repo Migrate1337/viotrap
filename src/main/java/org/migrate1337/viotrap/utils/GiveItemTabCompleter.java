@@ -27,6 +27,7 @@ public class GiveItemTabCompleter implements TabCompleter {
             suggestions.add("Пласт");
             suggestions.add("Явная_пыль");
             suggestions.add("Дезориентация");
+            suggestions.add("Божья_аура");
         } else if (args.length == 4) {
             suggestions.add("1");
             suggestions.add("4");

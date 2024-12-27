@@ -27,6 +27,7 @@ public class DisorientItemListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
 
         if (item == null || !item.isSimilar(DisorientItem.getDisorientItem(item.getAmount()))) return;
+        if (!event.getAction().toString().contains("RIGHT_CLICK")) return;
 
         if (player.hasCooldown(item.getType())) {
             player.sendMessage("§cПодождите перед использованием снова!");
