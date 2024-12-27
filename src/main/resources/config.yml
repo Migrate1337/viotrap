@@ -73,7 +73,7 @@ divine_aura:
   material: "GHAST_TEAR"
   description:
     - "Используйте, чтобы снять с себя"
-    - "негативные эффекты и получить благословение."
+    - "негативные эффекты и получить позитивные."
   cooldown: 10 # Кулдаун в секундах
   positive_effects:
     - REGENERATION:
