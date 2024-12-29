@@ -1,5 +1,10 @@
 package org.migrate1337.viotrap.listeners;
 
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -37,13 +42,18 @@ public class DivineAuraItemListener implements Listener {
             player.sendMessage("§cПодождите перед использованием снова!");
             return;
         }
+        Location location = player.getLocation();
+        String worldName = location.getWorld().getName();
 
+        if (isInBannedRegion(location, worldName)) {
+            player.sendMessage("§cВы не можете установить пласт в этом регионе!");
+            return;
+        }
         item.setAmount(item.getAmount() - 1);
 
         int cooldownSeconds = plugin.getDivineAuraItemCooldown();
         player.setCooldown(item.getType(), cooldownSeconds * 20);
 
-        // Частицы и звук
         Location playerLocation = player.getLocation();
         String particleType = plugin.getDivineAuraItemParticleType();
         String soundType = plugin.getDivineAuraItemSoundType();
@@ -53,16 +63,14 @@ public class DivineAuraItemListener implements Listener {
         player.getWorld().spawnParticle(Particle.valueOf(particleType), playerLocation, 50, 0.5, 1, 0.5, 0.05);
         player.getWorld().playSound(playerLocation, Sound.valueOf(soundType), volume, pitch);
 
-        // Сброс негативных эффектов
         List<String> negativeEffects = plugin.getConfig().getStringList("divine_aura.negative_effects");
         for (String effect : negativeEffects) {
             PotionEffectType effectType = PotionEffectType.getByName(effect);
             if (effectType != null) {
-                player.removePotionEffect(effectType); // Удаляем негативный эффект
+                player.removePotionEffect(effectType);
             }
         }
 
-        // Применение позитивных эффектов
         List<Map<?, ?>> positiveEffects = plugin.getConfig().getMapList("divine_aura.positive_effects");
         for (Map<?, ?> effect : positiveEffects) {
             for (Map.Entry<?, ?> entry : effect.entrySet()) {
@@ -79,5 +87,19 @@ public class DivineAuraItemListener implements Listener {
 
         player.sendMessage("§aВы сняли с себя негативные эффекты и получили благословение!");
     }
+    private boolean isInBannedRegion(Location location, String worldName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
 
+        if (regionManager == null) {
+            return false;
+        }
+
+        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("divine_aura.banned_regions");
+
+        com.sk89q.worldedit.math.BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        return regionManager.getApplicableRegions(vector).getRegions()
+                .stream()
+                .anyMatch(region -> bannedRegions.contains(region.getId()));
+    }
 }

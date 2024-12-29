@@ -1,5 +1,10 @@
 package org.migrate1337.viotrap.listeners;
 
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -33,7 +38,14 @@ public class DisorientItemListener implements Listener {
             player.sendMessage("§cПодождите перед использованием снова!");
             return;
         }
+        Location location = player.getLocation();
+        String worldName = location.getWorld().getName();
 
+        // Проверяем, находится ли игрок в запрещённом регионе
+        if (isInBannedRegion(location, worldName)) {
+            player.sendMessage("§cВы не можете установить пласт в этом регионе!");
+            return;
+        }
         item.setAmount(item.getAmount() - 1);
 
         int cooldownSeconds = plugin.getDisorientItemCooldown();
@@ -63,7 +75,23 @@ public class DisorientItemListener implements Listener {
 
         showParticleCircle(playerLocation, radius, Particle.valueOf(VioTrap.getPlugin().getDisorientItemParticleType()));
     }
+    private boolean isInBannedRegion(Location location, String worldName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
 
+        if (regionManager == null) {
+            return false;
+        }
+
+        // Получаем список запрещённых регионов из конфига
+        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("disorent_item.banned_regions");
+
+        // Получаем все регионы, содержащие точку установки
+        com.sk89q.worldedit.math.BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        return regionManager.getApplicableRegions(vector).getRegions()
+                .stream()
+                .anyMatch(region -> bannedRegions.contains(region.getId()));
+    }
     private void showParticleCircle(Location center, double radius, Particle particle) {
         int points = 100;
         double increment = (2 * Math.PI) / points;

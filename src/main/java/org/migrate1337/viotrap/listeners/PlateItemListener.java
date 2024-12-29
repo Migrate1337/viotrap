@@ -39,8 +39,8 @@ public class PlateItemListener implements Listener {
 
     public PlateItemListener(VioTrap plugin) {
         this.plugin = plugin;
-    }
 
+    }
     @EventHandler
     public void onPlayerUsePlate(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -48,6 +48,14 @@ public class PlateItemListener implements Listener {
 
         if (item != null && PlateItem.getUniqueId(item) != null &&
                 (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+
+            Location location = player.getLocation();
+            String worldName = location.getWorld().getName();
+
+            if (isInBannedRegion(location, worldName)) {
+                player.sendMessage("§cВы не можете установить пласт в этом регионе!");
+                return;
+            }
 
             if (player.hasCooldown(item.getType())) {
                 player.sendMessage(plugin.getPlateMessageCooldown());
@@ -57,7 +65,6 @@ public class PlateItemListener implements Listener {
             int cooldownTicks = plugin.getPlateCooldown() * 20;
             player.setCooldown(item.getType(), cooldownTicks);
 
-            Location location = player.getLocation();
             if (isRegionNearby(location, player.getWorld().getName())) {
                 player.sendMessage(plugin.getPlateMessageNearby());
                 return;
@@ -112,22 +119,35 @@ public class PlateItemListener implements Listener {
     }
 
 
+    private boolean isInBannedRegion(Location location, String worldName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
+
+        if (regionManager == null) {
+            return false;
+        }
+
+        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("plate.banned_regions");
+
+        com.sk89q.worldedit.math.BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        return regionManager.getApplicableRegions(vector).getRegions()
+                .stream()
+                .anyMatch(region -> bannedRegions.contains(region.getId()));
+    }
 
     private boolean isRegionNearby(Location location, String worldName) {
-        for (ProtectedCuboidRegion region : activePlates.values()) {
-            int minX = region.getMinimumPoint().getBlockX() - 3;
-            int minY = region.getMinimumPoint().getBlockY() - 3;
-            int minZ = region.getMinimumPoint().getBlockZ() - 3;
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
 
-            int maxX = region.getMaximumPoint().getBlockX() + 3;
-            int maxY = region.getMaximumPoint().getBlockY() + 3;
-            int maxZ = region.getMaximumPoint().getBlockZ() + 3;
+        if (regionManager != null) {
+            com.sk89q.worldedit.math.BlockVector3 min = BlockVector3.at(location.getBlockX() - 3, location.getBlockY() - 3, location.getBlockZ() - 3);
+            com.sk89q.worldedit.math.BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
 
-            if (location.getBlockX() >= minX && location.getBlockX() <= maxX &&
-                    location.getBlockY() >= minY && location.getBlockY() <= maxY &&
-                    location.getBlockZ() >= minZ && location.getBlockZ() <= maxZ) {
-                return true;
-            }
+            // Создаём временный регион для проверки пересечения
+            ProtectedCuboidRegion checkRegion = new ProtectedCuboidRegion("checkRegion", min, max);
+
+            return regionManager.getApplicableRegions(checkRegion).getRegions().stream()
+                    .anyMatch(region -> region.getId().endsWith("_trap") || region.getId().startsWith("plate_"));
         }
         return false;
     }
@@ -208,7 +228,6 @@ public class PlateItemListener implements Listener {
         if (regionManager != null) {
             regionManager.addRegion(region);
             activePlates.put(regionName, region);
-            plugin.getLogger().info("Created plate region: " + regionName);
         }
     }
 
@@ -220,7 +239,6 @@ public class PlateItemListener implements Listener {
         if (regionManager != null) {
             regionManager.removeRegion(regionName);
             activePlates.remove(regionName);
-            plugin.getLogger().info("Removed plate region: " + regionName);
         }
     }
 

@@ -56,14 +56,21 @@ public class TrapItemListener implements Listener {
                 return;
             }
 
-            int cooldownTicks = plugin.getTrapCooldown() * 20;
-            player.setCooldown(item.getType(), cooldownTicks);
-
             Location location = player.getLocation();
-            if (isRegionNearby(location, player.getWorld().getName())) {
+            String worldName = location.getWorld().getName();
+
+            if (isInBannedRegion(location, worldName)) {
+                player.sendMessage("§cВы не можете установить трапку в этом регионе!");
+                return;
+            }
+
+            if (isRegionNearby(location, worldName)) {
                 player.sendMessage(plugin.getTrapMessageNearby());
                 return;
             }
+
+            int cooldownTicks = plugin.getTrapCooldown() * 20;
+            player.setCooldown(item.getType(), cooldownTicks);
 
             String sound = plugin.getTrapSoundType();
             player.playSound(location, Sound.valueOf(sound), plugin.getTrapSoundVolume(), plugin.getTrapSoundPitch());
@@ -100,6 +107,22 @@ public class TrapItemListener implements Listener {
         }
     }
 
+    private boolean isInBannedRegion(Location location, String worldName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
+
+        if (regionManager == null) {
+            return false;
+        }
+
+        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("trap.banned_regions");
+
+        com.sk89q.worldedit.math.BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        return regionManager.getApplicableRegions(vector).getRegions()
+                .stream()
+                .anyMatch(region -> bannedRegions.contains(region.getId()));
+    }
+
 
     private boolean isRegionNearby(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
@@ -110,10 +133,13 @@ public class TrapItemListener implements Listener {
             com.sk89q.worldedit.math.BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
 
             ProtectedCuboidRegion checkRegion = new ProtectedCuboidRegion("checkRegion", min, max);
-            return regionManager.getApplicableRegions(checkRegion).size() > 0;
+
+            return regionManager.getApplicableRegions(checkRegion).getRegions().stream()
+                    .anyMatch(region -> region.getId().endsWith("_trap") || region.getId().startsWith("plate_"));
         }
         return false;
     }
+
 
     private void saveReplacedBlocks(UUID playerId, Location startLocation, Clipboard clipboard) {
         Map<Location, Material> replacedBlocks = new HashMap<>();
