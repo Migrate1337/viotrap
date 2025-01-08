@@ -31,5 +31,10 @@
       <option name="name" value="sk89q-repo" />
       <option name="url" value="https://maven.enginehub.org/repo/" />
     </remote-repository>
+    <remote-repository>
+      <option name="id" value="sirblobman-public" />
+      <option name="name" value="sirblobman-public" />
+      <option name="url" value="https://nexus.sirblobman.xyz/public/" />
+    </remote-repository>
   </component>
 </project>

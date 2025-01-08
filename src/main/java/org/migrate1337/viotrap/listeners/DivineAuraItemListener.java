@@ -1,5 +1,7 @@
 package org.migrate1337.viotrap.listeners;
 
+import com.github.sirblobman.combatlogx.api.ICombatLogX;
+import com.github.sirblobman.combatlogx.api.manager.ICombatManager;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
@@ -14,6 +16,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.migrate1337.viotrap.VioTrap;
@@ -46,7 +50,7 @@ public class DivineAuraItemListener implements Listener {
         String worldName = location.getWorld().getName();
 
         if (isInBannedRegion(location, worldName)) {
-            player.sendMessage("§cВы не можете установить пласт в этом регионе!");
+            player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             return;
         }
         item.setAmount(item.getAmount() - 1);

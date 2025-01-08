@@ -55,6 +55,9 @@ reveal_item:
   radius: 10
   glow_duration: 5
   particle_type: CLOUD
+  messages:
+    pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
+    pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
   sound:
     type: "ENTITY_EXPERIENCE_ORB_PICKUP"
     volume: 1.0f
@@ -66,9 +69,19 @@ reveal_item:
 disorient_item:
   display_name: "§dДезориентация"
   type: "ENDER_EYE"
+  negative_effects:
+    - SLOW:
+        duration: 10
+        amplifier: 1   # Уровень эффекта
+    - BLINDNESS:
+        duration: 10
+        amplifier: 1
   description:
     - "§7Используйте, чтобы наложить"
     - "§7негативные эффекты на игроков поблизости."
+  messages:
+    pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
+    pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
   cooldown: 10
   effect_duration: 5
   radius: 10

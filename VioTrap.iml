@@ -19,13 +19,17 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="WorldEdit" level="project" />
+    <orderEntry type="library" name="WorldGuard" level="project" />
+    <orderEntry type="library" name="CombatLogX" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.spigotmc:spigot-api:1.16.5-R0.1-SNAPSHOT" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: commons-lang:commons-lang:2.6" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.guava:guava:21.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.code.gson:gson:2.8.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: net.md-5:bungeecord-chat:1.16-R0.4" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.yaml:snakeyaml:1.27" level="project" />
-    <orderEntry type="library" name="WorldEdit" level="project" />
-    <orderEntry type="library" name="WorldGuard" level="project" />
+    <orderEntry type="library" name="Maven: com.sk89q.worldguard.worldguard-libs:core:7.0.5" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.sirblobman.api:core:2.9-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.sirblobman.combatlogx:api:11.4-SNAPSHOT" level="project" />
   </component>
 </module>

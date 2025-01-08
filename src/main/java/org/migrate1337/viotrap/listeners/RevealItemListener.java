@@ -1,5 +1,9 @@
 package org.migrate1337.viotrap.listeners;
 
+import com.github.sirblobman.combatlogx.api.ICombatLogX;
+import com.github.sirblobman.combatlogx.api.manager.ICombatManager;
+import com.github.sirblobman.combatlogx.api.object.TagReason;
+import com.github.sirblobman.combatlogx.api.object.TagType;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
@@ -14,6 +18,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -33,7 +39,11 @@ public class RevealItemListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
 
         if (item == null || !item.isSimilar(RevealItem.getRevealItem(item.getAmount()))) return;
-
+        if (!event.getAction().toString().contains("RIGHT_CLICK")) return;
+        ICombatLogX combatLogX = getAPI();
+        ICombatManager combatManager = combatLogX.getCombatManager();
+        combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
+        player.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
         if (player.hasCooldown(item.getType())) {
             player.sendMessage("§cПодождите перед использованием снова!");
             return;
@@ -44,7 +54,7 @@ public class RevealItemListener implements Listener {
         String worldName = location.getWorld().getName();
 
         if (isInBannedRegion(location, worldName)) {
-            player.sendMessage("§cВы не можете установить пласт в этом регионе!");
+            player.sendMessage("§cВы не можете использовать данный предмет  в этом регионе!");
             return;
         }
         int cooldownSeconds = plugin.getRevealItemCooldown();
@@ -56,20 +66,24 @@ public class RevealItemListener implements Listener {
 
         for (Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
             if (nearbyPlayer.equals(player)) continue;
-
+            nearbyPlayer.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-for-player"));
+            combatManager.tag(nearbyPlayer, null, TagType.DAMAGE, TagReason.ATTACKED);
             if (nearbyPlayer.getLocation().distance(playerLocation) <= radius) {
                 boolean wasInvisible = nearbyPlayer.hasPotionEffect(PotionEffectType.INVISIBILITY);
-
+                int remainingInvisibilityTime = 0;
                 if (wasInvisible) {
+                    PotionEffect invisibilityEffect = nearbyPlayer.getPotionEffect(PotionEffectType.INVISIBILITY);
+                    remainingInvisibilityTime = invisibilityEffect.getDuration();
                     nearbyPlayer.removePotionEffect(PotionEffectType.INVISIBILITY);
                 }
                 nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, durationSeconds * 20, 0));
 
                 if (wasInvisible) {
+                    int finalRemainingInvisibilityTime = remainingInvisibilityTime - durationSeconds * 20;
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 99999, 0, false, false));
+                            nearbyPlayer.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, finalRemainingInvisibilityTime, 0, false, false));
                         }
                     }.runTaskLater(plugin, durationSeconds * 20L);
                 }
@@ -81,7 +95,6 @@ public class RevealItemListener implements Listener {
         float pitch = plugin.getRevealItemSoundPitch();
         player.playSound(playerLocation, Sound.valueOf(soundType), volume, pitch);
 
-        player.sendMessage("§aЭффекты сняты с игроков!");
 
         showParticleCircle(playerLocation, radius, Particle.valueOf(VioTrap.getPlugin().getRevealItemParticleType()));
     }
@@ -113,5 +126,10 @@ public class RevealItemListener implements Listener {
             Location particleLocation = new Location(center.getWorld(), x, center.getY(), z);
             center.getWorld().spawnParticle(particle, particleLocation, 1, 0, 0, 0, 0);
         }
+    }
+    public ICombatLogX getAPI() {
+        PluginManager pluginManager = Bukkit.getPluginManager();
+        Plugin plugin = pluginManager.getPlugin("CombatLogX");
+        return (ICombatLogX) plugin;
     }
 }

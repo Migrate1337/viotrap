@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: com.github.sirblobman.api:core:2.9-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/sirblobman/api/core/2.9-SNAPSHOT/core-2.9-20241207.000955-82.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/sirblobman/api/core/2.9-SNAPSHOT/core-2.9-20241207.000955-82-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/sirblobman/api/core/2.9-SNAPSHOT/core-2.9-20241207.000955-82-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

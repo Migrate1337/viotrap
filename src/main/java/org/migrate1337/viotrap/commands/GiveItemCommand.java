@@ -14,11 +14,6 @@ public class GiveItemCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("Эту команду может выполнить только игрок!");
-            return false;
-        }
-
         if (args.length != 4 || !args[0].equalsIgnoreCase("give")) {
             sender.sendMessage("Использование: /viotrap give <игрок> <предмет> <количество>");
             return false;

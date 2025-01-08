@@ -156,14 +156,14 @@ public final class VioTrap extends JavaPlugin {
     }
 
     private void loadDivineAuraItemConfig() {
-        divineAuraItemName = config.getString("items.divine_aura.name", "Божья Аура");
-        divineAuraItemMaterial = Material.getMaterial(config.getString("items.divine_aura.material", "GHAST_TEAR"));
-        divineAuraItemDescription = config.getStringList("items.divine_aura.description");
-        divineAuraItemCooldown = config.getInt("items.divine_aura.cooldown", 10);
-        divineAuraParticleType = config.getString("items.divine_aura.particle_type", "VILLAGER_HAPPY");
-        divineAuraSoundType = config.getString("items.divine_aura.sound.type", "ENTITY_PLAYER_LEVELUP");
-        divineAuraSoundVolume = (float) config.getDouble("items.divine_aura.sound.volume", 1.0);
-        divineAuraSoundPitch = (float) config.getDouble("items.divine_aura.sound.pitch", 1.0);
+        divineAuraItemName = config.getString("divine_aura.name", "Божья Аура");
+        divineAuraItemMaterial = Material.getMaterial(config.getString("divine_aura.material", "GHAST_TEAR"));
+        divineAuraItemDescription = config.getStringList("divine_aura.description");
+        divineAuraItemCooldown = config.getInt("divine_aura.cooldown", 10);
+        divineAuraParticleType = config.getString("divine_aura.particle_type", "VILLAGER_HAPPY");
+        divineAuraSoundType = config.getString("divine_aura.sound.type", "ENTITY_PLAYER_LEVELUP");
+        divineAuraSoundVolume = (float) config.getDouble("divine_aura.sound.volume", 1.0);
+        divineAuraSoundPitch = (float) config.getDouble("divine_aura.sound.pitch", 1.0);
     }
 
 
