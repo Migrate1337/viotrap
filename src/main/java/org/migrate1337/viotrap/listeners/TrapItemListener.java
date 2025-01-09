@@ -1,5 +1,9 @@
 package org.migrate1337.viotrap.listeners;
 
+import com.github.sirblobman.combatlogx.api.ICombatLogX;
+import com.github.sirblobman.combatlogx.api.manager.ICombatManager;
+import com.github.sirblobman.combatlogx.api.object.TagReason;
+import com.github.sirblobman.combatlogx.api.object.TagType;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -25,6 +29,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
 
@@ -55,7 +61,13 @@ public class TrapItemListener implements Listener {
                 player.sendMessage(plugin.getTrapMessageCooldown());
                 return;
             }
+            ICombatLogX combatLogX = getAPI();
+            ICombatManager combatManager = combatLogX.getCombatManager();
 
+            if(plugin.getConfig().getString("plate.enable-pvp") == "true"){
+                combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
+                player.sendMessage(plugin.getConfig().getString("plate.messages.pvp-enabled"));
+            }
             Location location = player.getLocation();
             String worldName = location.getWorld().getName();
 
@@ -204,4 +216,11 @@ public class TrapItemListener implements Listener {
             activeTraps.remove(regionName);
         }
     }
+
+    public ICombatLogX getAPI() {
+        PluginManager pluginManager = Bukkit.getPluginManager();
+        Plugin plugin = pluginManager.getPlugin("CombatLogX");
+        return (ICombatLogX) plugin;
+    }
+
 }

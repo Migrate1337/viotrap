@@ -42,8 +42,6 @@ public class RevealItemListener implements Listener {
         if (!event.getAction().toString().contains("RIGHT_CLICK")) return;
         ICombatLogX combatLogX = getAPI();
         ICombatManager combatManager = combatLogX.getCombatManager();
-        combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
-        player.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
         if (player.hasCooldown(item.getType())) {
             player.sendMessage("§cПодождите перед использованием снова!");
             return;
@@ -63,12 +61,14 @@ public class RevealItemListener implements Listener {
 
         int radius = plugin.getRevealItemRadius();
         Location playerLocation = player.getLocation();
+        boolean foundOpponent = false;
 
         for (Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
             if (nearbyPlayer.equals(player)) continue;
             nearbyPlayer.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-for-player"));
             combatManager.tag(nearbyPlayer, null, TagType.DAMAGE, TagReason.ATTACKED);
             if (nearbyPlayer.getLocation().distance(playerLocation) <= radius) {
+                foundOpponent = true;
                 boolean wasInvisible = nearbyPlayer.hasPotionEffect(PotionEffectType.INVISIBILITY);
                 int remainingInvisibilityTime = 0;
                 if (wasInvisible) {
@@ -88,6 +88,11 @@ public class RevealItemListener implements Listener {
                     }.runTaskLater(plugin, durationSeconds * 20L);
                 }
             }
+        }
+
+        if(foundOpponent){
+            combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
+            player.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
         }
 
         String soundType = plugin.getRevealItemSoundType();

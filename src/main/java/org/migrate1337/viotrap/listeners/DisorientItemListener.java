@@ -42,41 +42,36 @@ public class DisorientItemListener implements Listener {
 
         if (item == null || !item.isSimilar(DisorientItem.getDisorientItem(item.getAmount()))) return;
         if (!event.getAction().toString().contains("RIGHT_CLICK")) return;
-        ICombatLogX combatLogX = getAPI();
-        ICombatManager combatManager = combatLogX.getCombatManager();
-        combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
-        player.sendMessage(plugin.getConfig().getString("disorient_item.messages.pvp-enabled-by-player"));
+
         if (player.hasCooldown(item.getType())) {
             player.sendMessage("§cПодождите перед использованием снова!");
             return;
         }
+
         Location location = player.getLocation();
         String worldName = location.getWorld().getName();
 
-        // Проверяем, находится ли игрок в запрещённом регионе
         if (isInBannedRegion(location, worldName)) {
             player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             return;
         }
-        item.setAmount(item.getAmount() - 1);
-
-
-        int cooldownSeconds = plugin.getDisorientItemCooldown();
-        int durationSeconds = plugin.getDisorientItemEffectDuration();
-        player.setCooldown(item.getType(), cooldownSeconds * 20);
 
         int radius = plugin.getDisorientItemRadius();
         Location playerLocation = player.getLocation();
+
+        boolean foundOpponent = false;
+        ICombatLogX combatLogX = getAPI();
+        ICombatManager combatManager = combatLogX.getCombatManager();
 
         for (Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
             if (nearbyPlayer.equals(player)) continue;
 
             if (nearbyPlayer.getLocation().distance(playerLocation) <= radius) {
+                foundOpponent = true;
 
-                // Негативные эффекты
                 combatManager.tag(nearbyPlayer, null, TagType.DAMAGE, TagReason.ATTACKED);
-                List<Map<?, ?>> positiveEffects = plugin.getConfig().getMapList("disorient_item.negative_effects");
-                for (Map<?, ?> effect : positiveEffects) {
+                List<Map<?, ?>> negativeEffects = plugin.getConfig().getMapList("disorient_item.negative_effects");
+                for (Map<?, ?> effect : negativeEffects) {
                     for (Map.Entry<?, ?> entry : effect.entrySet()) {
                         String effectName = (String) entry.getKey();
                         Map<?, ?> effectDetails = (Map<?, ?>) entry.getValue();
@@ -84,14 +79,23 @@ public class DisorientItemListener implements Listener {
                         if (effectType != null) {
                             int duration = (int) effectDetails.get("duration") * 20;
                             int amplifier = (int) effectDetails.get("amplifier");
-                            nearbyPlayer.addPotionEffect(new PotionEffect(effectType, duration, amplifier)); // Накладываем позитивный эффект
+                            nearbyPlayer.addPotionEffect(new PotionEffect(effectType, duration, amplifier));
                         }
                     }
                 }
             }
         }
 
-        // Воспроизведение звука
+        if (foundOpponent) {
+            combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
+            player.sendMessage(plugin.getConfig().getString("disorient_item.messages.pvp-enabled-by-player"));
+        }
+
+        item.setAmount(item.getAmount() - 1);
+
+        int cooldownSeconds = plugin.getDisorientItemCooldown();
+        player.setCooldown(item.getType(), cooldownSeconds * 20);
+
         String soundType = plugin.getDisorientItemSoundType();
         float volume = plugin.getDisorientItemSoundVolume();
         float pitch = plugin.getDisorientItemSoundPitch();

@@ -1,4 +1,5 @@
 trap:
+  enable-pvp: false #Включать ли пвп при использовании трапки
   schematic: "trap.schem"
   display_name: "§6Трапка"
   description: "§7Используйте, чтобы установить ловушку!"
@@ -9,6 +10,7 @@ trap:
     already_nearby: "Рядом уже установлен активный пласт или трапка!"
     cooldown_message: "§cПодождите перед использованием снова!"
     trap_failed: "Не удалось загрузить ловушку!"
+    pvp-enable: "§cВы использовали трапку и получили режим пвп!"
   sound:
     type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
     volume: 10.0f # Громкость звука.
@@ -19,6 +21,7 @@ trap:
     - private
 
 plate:
+  enable-pvp: false #Включать ли пвп при использовании пласта
   display_name: "§6Пласт"
   description: "§7Используйте, чтобы установить пласт!"
   type: "DRIED_KELP"
@@ -28,6 +31,7 @@ plate:
     already_nearby: "Рядом уже установлен активный пласт или трапка!"
     cooldown_message: "§cПодождите перед использованием снова!"
     placement_failed: "Не удалось загрузить пласт!"
+    pvp-enabled: "§cВы использовали пласт и получили режим пвп!"
   forward_schematic: "plate_forward.schem" # Значение yaw от -22.5 до 22.5(Значение pitch в этом случае неважно)
   forward_left_schematic: "plate_forward_left.schem" # Значение yaw от 22.5 до 67.5(Значение pitch в этом случае неважно)
   forward_right_schematic: "plate_forward_right.schem" # Значение yaw от -67.5 до -22.5(Значение pitch в этом случае неважно)
@@ -83,7 +87,6 @@ disorient_item:
     pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
     pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
   cooldown: 10
-  effect_duration: 5
   radius: 10
   sound:
     type: "ENTITY_WITHER_AMBIENT"
