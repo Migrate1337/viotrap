@@ -25,12 +25,18 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.RevealItem;
+import org.migrate1337.viotrap.utils.CombatLogXHandler;
+import org.migrate1337.viotrap.utils.PVPManagerHandle;
+import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 public class RevealItemListener implements Listener {
     private final VioTrap plugin;
-
+    private final CombatLogXHandler combatLogXHandler;
+    private final PVPManagerHandle pvpManagerHandler;
     public RevealItemListener(VioTrap plugin) {
         this.plugin = plugin;
+        this.combatLogXHandler = new CombatLogXHandler();
+        this.pvpManagerHandler = new PVPManagerHandle();
     }
 
     @EventHandler
@@ -40,8 +46,6 @@ public class RevealItemListener implements Listener {
 
         if (item == null || !item.isSimilar(RevealItem.getRevealItem(item.getAmount()))) return;
         if (!event.getAction().toString().contains("RIGHT_CLICK")) return;
-        ICombatLogX combatLogX = getAPI();
-        ICombatManager combatManager = combatLogX.getCombatManager();
         if (player.hasCooldown(item.getType())) {
             player.sendMessage("§cПодождите перед использованием снова!");
             return;
@@ -65,10 +69,17 @@ public class RevealItemListener implements Listener {
 
         for (Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
             if (nearbyPlayer.equals(player)) continue;
-            nearbyPlayer.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-for-player"));
-            combatManager.tag(nearbyPlayer, null, TagType.DAMAGE, TagReason.ATTACKED);
+
             if (nearbyPlayer.getLocation().distance(playerLocation) <= radius) {
                 foundOpponent = true;
+                if (combatLogXHandler.isCombatLogXEnabled()) {
+                    nearbyPlayer.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-for-player"));
+                    combatLogXHandler.tagPlayer(nearbyPlayer, TagType.DAMAGE, TagReason.ATTACKED);
+                }
+                if (pvpManagerHandler.isPvPManagerEnabled()) {
+                    pvpManagerHandler.tagPlayerForPvP(nearbyPlayer);
+                    nearbyPlayer.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-for-player"));
+                }
                 boolean wasInvisible = nearbyPlayer.hasPotionEffect(PotionEffectType.INVISIBILITY);
                 int remainingInvisibilityTime = 0;
                 if (wasInvisible) {
@@ -90,11 +101,18 @@ public class RevealItemListener implements Listener {
             }
         }
 
-        if(foundOpponent){
-            combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
-            player.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
+        if (combatLogXHandler.isCombatLogXEnabled()) {
+            if (foundOpponent) {
+                combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.UNKNOWN);
+                player.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
+            }
         }
-
+        if (pvpManagerHandler.isPvPManagerEnabled()) {
+            if (foundOpponent) {
+                pvpManagerHandler.tagPlayerForPvP(player);
+                player.sendMessage(plugin.getConfig().getString("reveal_item.messages.pvp-enabled-by-player"));
+            }
+        }
         String soundType = plugin.getRevealItemSoundType();
         float volume = plugin.getRevealItemSoundVolume();
         float pitch = plugin.getRevealItemSoundPitch();
@@ -131,10 +149,5 @@ public class RevealItemListener implements Listener {
             Location particleLocation = new Location(center.getWorld(), x, center.getY(), z);
             center.getWorld().spawnParticle(particle, particleLocation, 1, 0, 0, 0, 0);
         }
-    }
-    public ICombatLogX getAPI() {
-        PluginManager pluginManager = Bukkit.getPluginManager();
-        Plugin plugin = pluginManager.getPlugin("CombatLogX");
-        return (ICombatLogX) plugin;
     }
 }

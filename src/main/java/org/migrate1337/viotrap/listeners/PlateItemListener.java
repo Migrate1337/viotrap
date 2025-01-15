@@ -32,6 +32,8 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.PlateItem;
+import org.migrate1337.viotrap.utils.CombatLogXHandler;
+import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,10 +44,12 @@ public class PlateItemListener implements Listener {
     private final Map<UUID, Map<Location, Material>> playerReplacedBlocks = new HashMap<>();
     private final Map<UUID, Long> lastUseTime = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activePlates = new HashMap<>();
-
+    private final CombatLogXHandler combatLogXHandler;
+    private final PVPManagerHandle pvpManagerHandler;
     public PlateItemListener(VioTrap plugin) {
         this.plugin = plugin;
-
+        this.combatLogXHandler = new CombatLogXHandler();
+        this.pvpManagerHandler = new PVPManagerHandle();
     }
     @EventHandler
     public void onPlayerUsePlate(PlayerInteractEvent event) {
@@ -55,12 +59,15 @@ public class PlateItemListener implements Listener {
         if (item != null && PlateItem.getUniqueId(item) != null &&
                 (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
 
-            ICombatLogX combatLogX = getAPI();
-            ICombatManager combatManager = combatLogX.getCombatManager();
-
             if(plugin.getConfig().getString("plate.enable-pvp") == "true"){
-                combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
-                player.sendMessage(plugin.getConfig().getString("plate.messages.pvp-enabled"));
+                if (combatLogXHandler.isCombatLogXEnabled()) {
+                    combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
+                    player.sendMessage(plugin.getConfig().getString("plate.messages.pvp-enabled"));
+                }
+                if (pvpManagerHandler.isPvPManagerEnabled()) {
+                    pvpManagerHandler.tagPlayerForPvP(player);
+                    player.sendMessage(plugin.getConfig().getString("plate.messages.pvp-enabled"));
+                }
             }
 
             Location location = player.getLocation();
@@ -279,10 +286,5 @@ public class PlateItemListener implements Listener {
             this.pos2Z = pos2Z;
             this.schematicName = schematicName;
         }
-    }
-    public ICombatLogX getAPI() {
-        PluginManager pluginManager = Bukkit.getPluginManager();
-        Plugin plugin = pluginManager.getPlugin("CombatLogX");
-        return (ICombatLogX) plugin;
     }
 }

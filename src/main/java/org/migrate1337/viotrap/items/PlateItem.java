@@ -7,15 +7,12 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 import org.migrate1337.viotrap.VioTrap;
 
-import java.util.UUID;
-
 public class PlateItem {
 
     private static final NamespacedKey PLATE_ITEM_KEY = new NamespacedKey(VioTrap.getPlugin(VioTrap.class), "plate_item_id");
 
-    private static String generateUniqueId() {
-        return UUID.randomUUID().toString();
-    }
+    // Статичный ID для предмета
+    private static final String STATIC_ITEM_ID = "static_plate_item_id";
 
     public static ItemStack getPlateItem(int amount) {
         ItemStack item = new ItemStack(Material.valueOf(VioTrap.getPlugin().getPlateType()), amount);
@@ -24,10 +21,11 @@ public class PlateItem {
         if (meta != null) {
             meta.setDisplayName(VioTrap.getPlugin().getPlateDisplayName());
 
+            // Устанавливаем статичный ID как NBT тег
             meta.getPersistentDataContainer().set(
                     PLATE_ITEM_KEY,
                     PersistentDataType.STRING,
-                    generateUniqueId()
+                    STATIC_ITEM_ID
             );
 
             item.setItemMeta(meta);

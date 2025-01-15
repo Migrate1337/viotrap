@@ -1,12 +1,20 @@
 package org.migrate1337.viotrap;
 
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
+import org.migrate1337.viotrap.commands.CreateSkinCommand;
 import org.migrate1337.viotrap.commands.GiveItemCommand;
+import org.migrate1337.viotrap.gui.SkinCreationMenu;
 import org.migrate1337.viotrap.listeners.*;
+import org.migrate1337.viotrap.listeners.ChatListener;
 import org.migrate1337.viotrap.utils.GiveItemTabCompleter;
+import org.migrate1337.viotrap.utils.ChatInputHandler;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -82,6 +90,9 @@ public final class VioTrap extends JavaPlugin {
     private float divineAuraSoundVolume;
     private float divineAuraSoundPitch;
 
+    private ChatInputHandler chatInputHandler;
+    private Map<String, String> tempSkinData;
+
     @Override
     public void onEnable() {
         plugin = this;
@@ -102,6 +113,19 @@ public final class VioTrap extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlateItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DisorientItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DivineAuraItemListener(this), this);
+        getServer().getPluginManager().registerEvents(new SkinCreationMenu(this), this);
+        getServer().getPluginManager().registerEvents(new ChatListener(this), this);
+        getCommand("createskin").setExecutor(new CreateSkinCommand(this));
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onInventoryClick(InventoryClickEvent event) {
+                new SkinCreationMenu(VioTrap.this).onMenuClick(event);
+            }
+        }, this);
+        chatInputHandler = new ChatInputHandler();
+        tempSkinData = new HashMap<>();
+
+
     }
 
     private void loadTrapConfig() {
@@ -393,5 +417,27 @@ public final class VioTrap extends JavaPlugin {
 
     public float getDivineAuraItemSoundPitch() {
         return divineAuraSoundPitch;
+    }
+
+    public ChatInputHandler getChatInputHandler() {
+        return chatInputHandler;
+    }
+
+    public Map<String, String> getTempSkinData() {
+        return tempSkinData;
+    }
+    public String getSkinSchematic(String skinName) {
+        return config.getString("skins." + skinName + ".schem", getTrapSchematic());
+    }
+
+    public String getSkinDescription(String skinName) {
+        return config.getString("skins." + skinName + ".desc_for_trap", "Описание не найдено.");
+    }
+    public List<String> getSkinNames() {
+        ConfigurationSection skinsSection = config.getConfigurationSection("skins");
+        if (skinsSection != null) {
+            return new ArrayList<>(skinsSection.getKeys(false));
+        }
+        return Collections.emptyList();
     }
 }

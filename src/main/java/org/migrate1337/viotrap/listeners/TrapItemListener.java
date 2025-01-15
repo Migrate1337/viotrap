@@ -33,6 +33,8 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
+import org.migrate1337.viotrap.utils.CombatLogXHandler;
+import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -45,8 +47,12 @@ public class TrapItemListener implements Listener {
     private final Map<UUID, Map<Location, Material>> playerReplacedBlocks = new HashMap<>();
     private final Map<UUID, Long> lastUseTime = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activeTraps = new HashMap<>();
+    private final CombatLogXHandler combatLogXHandler;
+    private final PVPManagerHandle pvpManagerHandler;
     public TrapItemListener(VioTrap plugin) {
         this.plugin = plugin;
+        this.combatLogXHandler = new CombatLogXHandler();
+        this.pvpManagerHandler = new PVPManagerHandle();
     }
 
     @EventHandler
@@ -54,19 +60,23 @@ public class TrapItemListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
 
-        if (item != null && TrapItem.getUniqueId(item) != null &&
+        if (item != null && TrapItem.isTrapItem(player.getInventory().getItemInMainHand()) &&
                 (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
 
             if (player.hasCooldown(item.getType())) {
                 player.sendMessage(plugin.getTrapMessageCooldown());
                 return;
             }
-            ICombatLogX combatLogX = getAPI();
-            ICombatManager combatManager = combatLogX.getCombatManager();
 
-            if(plugin.getConfig().getString("plate.enable-pvp") == "true"){
-                combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
-                player.sendMessage(plugin.getConfig().getString("plate.messages.pvp-enabled"));
+            if(plugin.getConfig().getString("trap.enable-pvp") == "true"){
+                if (combatLogXHandler.isCombatLogXEnabled()) {
+                    combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
+                    player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled"));
+                }
+                if (pvpManagerHandler.isPvPManagerEnabled()) {
+                    pvpManagerHandler.tagPlayerForPvP(player);
+                    player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled"));
+                }
             }
             Location location = player.getLocation();
             String worldName = location.getWorld().getName();
@@ -89,7 +99,9 @@ public class TrapItemListener implements Listener {
             item.setAmount(item.getAmount() - 1);
 
             try {
-                File schematicFile = new File("plugins/WorldEdit/schematics/" + plugin.getTrapSchematic());
+                String skin = TrapItem.getSkin(item);
+                String schematic = (skin != null) ? plugin.getSkinSchematic(skin) : plugin.getTrapSchematic();
+                File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
                 Clipboard clipboard;
 
                 try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
@@ -216,11 +228,4 @@ public class TrapItemListener implements Listener {
             activeTraps.remove(regionName);
         }
     }
-
-    public ICombatLogX getAPI() {
-        PluginManager pluginManager = Bukkit.getPluginManager();
-        Plugin plugin = pluginManager.getPlugin("CombatLogX");
-        return (ICombatLogX) plugin;
-    }
-
 }

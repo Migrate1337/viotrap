@@ -1,7 +1,5 @@
 package org.migrate1337.viotrap.listeners;
 
-import com.github.sirblobman.combatlogx.api.ICombatLogX;
-import com.github.sirblobman.combatlogx.api.manager.ICombatManager;
 import com.github.sirblobman.combatlogx.api.object.TagReason;
 import com.github.sirblobman.combatlogx.api.object.TagType;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -18,21 +16,26 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginManager;
+import org.migrate1337.viotrap.VioTrap;
+import org.migrate1337.viotrap.utils.CombatLogXHandler;
+import org.migrate1337.viotrap.utils.PVPManagerHandle;
+import org.migrate1337.viotrap.items.DisorientItem;
+
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.migrate1337.viotrap.VioTrap;
-import org.migrate1337.viotrap.items.DisorientItem;
 
 import java.util.List;
 import java.util.Map;
 
 public class DisorientItemListener implements Listener {
     private final VioTrap plugin;
+    private final CombatLogXHandler combatLogXHandler;
+    private final PVPManagerHandle pvpManagerHandler;
 
     public DisorientItemListener(VioTrap plugin) {
         this.plugin = plugin;
+        this.combatLogXHandler = new CombatLogXHandler();
+        this.pvpManagerHandler = new PVPManagerHandle();  // Инициализация PvPManagerHandler
     }
 
     @EventHandler
@@ -60,8 +63,6 @@ public class DisorientItemListener implements Listener {
         Location playerLocation = player.getLocation();
 
         boolean foundOpponent = false;
-        ICombatLogX combatLogX = getAPI();
-        ICombatManager combatManager = combatLogX.getCombatManager();
 
         for (Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
             if (nearbyPlayer.equals(player)) continue;
@@ -69,7 +70,16 @@ public class DisorientItemListener implements Listener {
             if (nearbyPlayer.getLocation().distance(playerLocation) <= radius) {
                 foundOpponent = true;
 
-                combatManager.tag(nearbyPlayer, null, TagType.DAMAGE, TagReason.ATTACKED);
+                if (combatLogXHandler.isCombatLogXEnabled()) {
+                    combatLogXHandler.tagPlayer(nearbyPlayer, TagType.DAMAGE, TagReason.ATTACKED);
+                    nearbyPlayer.sendMessage(plugin.getConfig().getString("disorient_item.messages.pvp-enabled-for-player"));
+                }
+
+                if (pvpManagerHandler.isPvPManagerEnabled()) {
+                    pvpManagerHandler.tagPlayerForPvP(nearbyPlayer);
+                    nearbyPlayer.sendMessage(plugin.getConfig().getString("disorient_item.messages.pvp-enabled-for-player"));
+                }
+
                 List<Map<?, ?>> negativeEffects = plugin.getConfig().getMapList("disorient_item.negative_effects");
                 for (Map<?, ?> effect : negativeEffects) {
                     for (Map.Entry<?, ?> entry : effect.entrySet()) {
@@ -86,12 +96,20 @@ public class DisorientItemListener implements Listener {
             }
         }
 
-        if (foundOpponent) {
-            combatManager.tag(player, null, TagType.DAMAGE, TagReason.UNKNOWN);
-            player.sendMessage(plugin.getConfig().getString("disorient_item.messages.pvp-enabled-by-player"));
+        if (combatLogXHandler.isCombatLogXEnabled()) {
+            if (foundOpponent) {
+                combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.UNKNOWN);
+                player.sendMessage(plugin.getConfig().getString("disorient_item.messages.pvp-enabled-by-player"));
+            }
         }
-
+        if (pvpManagerHandler.isPvPManagerEnabled()) {
+            if (foundOpponent) {
+                pvpManagerHandler.tagPlayerForPvP(player);
+                player.sendMessage(plugin.getConfig().getString("disorient_item.messages.pvp-enabled-by-player"));
+            }
+        }
         item.setAmount(item.getAmount() - 1);
+
 
         int cooldownSeconds = plugin.getDisorientItemCooldown();
         player.setCooldown(item.getType(), cooldownSeconds * 20);
@@ -104,8 +122,6 @@ public class DisorientItemListener implements Listener {
         showParticleCircle(playerLocation, radius, Particle.valueOf(VioTrap.getPlugin().getDisorientItemParticleType()));
     }
 
-
-
     private boolean isInBannedRegion(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
@@ -114,15 +130,14 @@ public class DisorientItemListener implements Listener {
             return false;
         }
 
-        // Получаем список запрещённых регионов из конфига
-        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("disorent_item.banned_regions");
+        List<String> bannedRegions = plugin.getConfig().getStringList("disorient_item.banned_regions");
 
-        // Получаем все регионы, содержащие точку установки
         com.sk89q.worldedit.math.BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
         return regionManager.getApplicableRegions(vector).getRegions()
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));
     }
+
     private void showParticleCircle(Location center, double radius, Particle particle) {
         int points = 100;
         double increment = (2 * Math.PI) / points;
@@ -135,11 +150,5 @@ public class DisorientItemListener implements Listener {
             Location particleLocation = new Location(center.getWorld(), x, center.getY(), z);
             center.getWorld().spawnParticle(particle, particleLocation, 1, 0, 0, 0, 0);
         }
-    }
-
-    public ICombatLogX getAPI() {
-        PluginManager pluginManager = Bukkit.getPluginManager();
-        Plugin plugin = pluginManager.getPlugin("CombatLogX");
-        return (ICombatLogX) plugin;
     }
 }
