@@ -1,5 +1,6 @@
 package org.migrate1337.viotrap.commands;
 
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -20,7 +21,10 @@ public class CreateSkinCommand implements CommandExecutor {
             sender.sendMessage("§cЭту команду можно использовать только игроку.");
             return true;
         }
-
+        if(!sender.hasPermission("viotrap.createskin")) {
+            sender.sendMessage(ChatColor.RED + "У вас нет прав на использование данной команды!");
+            return false;
+        }
         Player player = (Player) sender;
         SkinCreationMenu menu = new SkinCreationMenu(plugin);
         menu.openMenu(player);

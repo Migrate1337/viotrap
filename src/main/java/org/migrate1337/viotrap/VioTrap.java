@@ -8,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
+import org.migrate1337.viotrap.commands.ApplySkinCommand;
 import org.migrate1337.viotrap.commands.CreateSkinCommand;
 import org.migrate1337.viotrap.commands.GiveItemCommand;
 import org.migrate1337.viotrap.gui.SkinCreationMenu;
@@ -116,6 +117,7 @@ public final class VioTrap extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SkinCreationMenu(this), this);
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getCommand("createskin").setExecutor(new CreateSkinCommand(this));
+        getCommand("applyskin").setExecutor(new ApplySkinCommand(this));
         getServer().getPluginManager().registerEvents(new Listener() {
             @EventHandler
             public void onInventoryClick(InventoryClickEvent event) {

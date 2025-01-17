@@ -29,8 +29,11 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.utils.CombatLogXHandler;
@@ -60,76 +63,101 @@ public class TrapItemListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
 
-        if (item != null && TrapItem.isTrapItem(player.getInventory().getItemInMainHand()) &&
-                (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+        if (item == null || !TrapItem.isTrapItem(item)) {
+            return;
+        }
 
-            if (player.hasCooldown(item.getType())) {
-                player.sendMessage(plugin.getTrapMessageCooldown());
-                return;
-            }
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
 
-            if(plugin.getConfig().getString("trap.enable-pvp") == "true"){
-                if (combatLogXHandler.isCombatLogXEnabled()) {
-                    combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
-                    player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled"));
-                }
-                if (pvpManagerHandler.isPvPManagerEnabled()) {
-                    pvpManagerHandler.tagPlayerForPvP(player);
-                    player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled"));
-                }
-            }
-            Location location = player.getLocation();
-            String worldName = location.getWorld().getName();
+        if (player.hasCooldown(item.getType())) {
+            player.sendMessage(plugin.getTrapMessageCooldown());
+            return;
+        }
 
-            if (isInBannedRegion(location, worldName)) {
-                player.sendMessage("§cВы не можете установить трапку в этом регионе!");
-                return;
-            }
+        Location location = player.getLocation();
+        String skin = TrapItem.getSkin(item);
+        String schematic = plugin.getSkinSchematic(skin);
+        if (!plugin.getConfig().contains("skins." + skin)) {
+            player.sendMessage("§cСкин не найден в конфигурации.");
+            return;
+        }
 
-            if (isRegionNearby(location, worldName)) {
-                player.sendMessage(plugin.getTrapMessageNearby());
-                return;
-            }
+        if (isInBannedRegion(location, location.getWorld().getName())) {
+            player.sendMessage("§cВы не можете установить трапку в этом регионе!");
+            return;
+        }
 
-            int cooldownTicks = plugin.getTrapCooldown() * 20;
-            player.setCooldown(item.getType(), cooldownTicks);
+        if (isRegionNearby(location, location.getWorld().getName())) {
+            player.sendMessage(plugin.getTrapMessageNearby());
+            return;
+        }
 
-            String sound = plugin.getTrapSoundType();
-            player.playSound(location, Sound.valueOf(sound), plugin.getTrapSoundVolume(), plugin.getTrapSoundPitch());
-            item.setAmount(item.getAmount() - 1);
 
-            try {
-                String skin = TrapItem.getSkin(item);
-                String schematic = (skin != null) ? plugin.getSkinSchematic(skin) : plugin.getTrapSchematic();
-                File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
-                Clipboard clipboard;
+        player.setCooldown(item.getType(), plugin.getTrapCooldown() * 20);
+        player.playSound(location, Sound.valueOf(plugin.getTrapSoundType()), plugin.getTrapSoundVolume(), plugin.getTrapSoundPitch());
 
-                try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
-                    clipboard = reader.read();
-                }
 
+
+        // Логика создания региона и установки схематики
+        try {
+            File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
+            try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
+                Clipboard clipboard = reader.read();
+                com.sk89q.worldedit.math.BlockVector3 min = clipboard.getRegion().getMinimumPoint();
+                com.sk89q.worldedit.math.BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+
+                double sizeX = max.getBlockX() - min.getBlockX() + 1;
+                double sizeY = max.getBlockY() - min.getBlockY() + 1;
+                double sizeZ = max.getBlockZ() - min.getBlockZ() + 1;
+                // Применяем эффекты для игрока
+                applyEffects(player, "skins." + skin + ".effects.player");
+
+                // Применяем эффекты для противников
+                location.getWorld().getNearbyEntities(location, sizeX - 3, sizeY, sizeZ - 3, entity -> entity instanceof Player && !entity.equals(player))
+                        .forEach(entity -> {
+                            if (entity instanceof Player opponent) {
+                                applyEffects(opponent, "skins." + skin + ".effects.opponents");
+                            }
+                        });
                 createTrapRegion(player, location);
-
-                try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(player.getWorld()))) {
+                try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(location.getWorld()))) {
                     BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
                     saveReplacedBlocks(player.getUniqueId(), location, clipboard);
 
                     ForwardExtentCopy copy = new ForwardExtentCopy(clipboard, clipboard.getRegion(), clipboard.getOrigin(), editSession, pastePosition);
-                    Operations.complete((Operation) copy);
-                    int durationTicks = plugin.getTrapDuration() * 20;
+                    Operations.complete(copy);
 
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         restoreBlocks(player.getUniqueId());
                         removeTrapRegion(player.getName() + "_trap", location);
-                    }, durationTicks);
+                    }, plugin.getTrapDuration() * 20);
                 }
 
-            } catch (Exception e) {
-                player.sendMessage(plugin.getTrapMessageFailed());
-                e.printStackTrace();
+                item.setAmount(item.getAmount() - 1);
             }
+        } catch (Exception e) {
+            player.sendMessage(plugin.getTrapMessageFailed());
+            e.printStackTrace();
         }
     }
+    private void applyEffects(Player player, String configPath) {
+        if (!plugin.getConfig().contains(configPath)) {
+            return;
+        }
+
+        plugin.getConfig().getConfigurationSection(configPath).getKeys(false).forEach(effectName -> {
+            try {
+                int duration = plugin.getTrapDuration() * 20;
+                int amplifier = plugin.getConfig().getInt(configPath + "." + effectName + ".amplifier");
+                player.addPotionEffect(new PotionEffect(PotionEffectType.getByName(effectName), duration, amplifier));
+            } catch (Exception e) {
+                plugin.getLogger().warning("Ошибка применения эффекта: " + effectName);
+            }
+        });
+    }
+
 
     private boolean isInBannedRegion(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();

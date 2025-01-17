@@ -50,4 +50,7 @@ public class TrapItem {
         }
         return false;
     }
+    public static NamespacedKey getSkinKey() {
+        return SKIN_KEY;
+    }
 }

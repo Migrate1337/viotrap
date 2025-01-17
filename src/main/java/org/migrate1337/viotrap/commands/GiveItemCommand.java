@@ -1,5 +1,6 @@
 package org.migrate1337.viotrap.commands;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.command.Command;
@@ -12,7 +13,10 @@ public class GiveItemCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-
+        if(!sender.hasPermission("viotrap.*")) {
+            sender.sendMessage(ChatColor.RED + "У вас нет прав на использование данной команды!");
+            return false;
+        }
         if (args.length < 4 || !args[0].equalsIgnoreCase("give")) {
             sender.sendMessage("Использование: /viotrap give <игрок> <предмет> [<скин>] <количество>");
             return false;

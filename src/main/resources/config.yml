@@ -130,3 +130,14 @@ divine_aura:
     - spawn
     - new
     - private
+skins:
+  wooden:
+    schem: wooden.schem
+    desc_for_trap: §7Скин§6[Деревянный]
+    effects:
+      opponents:
+        NAUSEA:
+          amplifier: 1
+      player:
+        REGENERATION:
+          amplifier: 1
