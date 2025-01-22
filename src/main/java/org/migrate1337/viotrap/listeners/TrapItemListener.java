@@ -1,9 +1,5 @@
 package org.migrate1337.viotrap.listeners;
 
-import com.github.sirblobman.combatlogx.api.ICombatLogX;
-import com.github.sirblobman.combatlogx.api.manager.ICombatManager;
-import com.github.sirblobman.combatlogx.api.object.TagReason;
-import com.github.sirblobman.combatlogx.api.object.TagType;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -11,11 +7,11 @@ import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
-import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.domains.DefaultDomain;
+import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
@@ -23,21 +19,17 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginManager;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
-import org.migrate1337.viotrap.utils.CombatLogXHandler;
-import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -48,14 +40,10 @@ import java.util.UUID;
 public class TrapItemListener implements Listener {
     private final VioTrap plugin;
     private final Map<UUID, Map<Location, Material>> playerReplacedBlocks = new HashMap<>();
-    private final Map<UUID, Long> lastUseTime = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activeTraps = new HashMap<>();
-    private final CombatLogXHandler combatLogXHandler;
-    private final PVPManagerHandle pvpManagerHandler;
+
     public TrapItemListener(VioTrap plugin) {
         this.plugin = plugin;
-        this.combatLogXHandler = new CombatLogXHandler();
-        this.pvpManagerHandler = new PVPManagerHandle();
     }
 
     @EventHandler
@@ -95,33 +83,34 @@ public class TrapItemListener implements Listener {
         }
 
 
+        String soundType = plugin.getConfig().getString("skins." + skin + ".sound.type", plugin.getTrapSoundType());
+        float soundVolume = (float) plugin.getConfig().getDouble("skins." + skin + ".sound.volume", plugin.getTrapSoundVolume());
+        float soundPitch = (float) plugin.getConfig().getDouble("skins." + skin + ".sound.pitch", plugin.getTrapSoundPitch());
+
         player.setCooldown(item.getType(), plugin.getTrapCooldown() * 20);
-        player.playSound(location, Sound.valueOf(plugin.getTrapSoundType()), plugin.getTrapSoundVolume(), plugin.getTrapSoundPitch());
+        player.playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
 
-
-
-        // Логика создания региона и установки схематики
         try {
             File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
             try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
                 Clipboard clipboard = reader.read();
-                com.sk89q.worldedit.math.BlockVector3 min = clipboard.getRegion().getMinimumPoint();
-                com.sk89q.worldedit.math.BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+                BlockVector3 min = clipboard.getRegion().getMinimumPoint();
+                BlockVector3 max = clipboard.getRegion().getMaximumPoint();
 
                 double sizeX = max.getBlockX() - min.getBlockX() + 1;
                 double sizeY = max.getBlockY() - min.getBlockY() + 1;
                 double sizeZ = max.getBlockZ() - min.getBlockZ() + 1;
-                // Применяем эффекты для игрока
+
                 applyEffects(player, "skins." + skin + ".effects.player");
 
-                // Применяем эффекты для противников
                 location.getWorld().getNearbyEntities(location, sizeX - 3, sizeY, sizeZ - 3, entity -> entity instanceof Player && !entity.equals(player))
                         .forEach(entity -> {
                             if (entity instanceof Player opponent) {
                                 applyEffects(opponent, "skins." + skin + ".effects.opponents");
                             }
                         });
-                createTrapRegion(player, location);
+
+                createTrapRegion(player, location, sizeX, sizeY, sizeZ);
                 try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(location.getWorld()))) {
                     BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
                     saveReplacedBlocks(player.getUniqueId(), location, clipboard);
@@ -142,6 +131,8 @@ public class TrapItemListener implements Listener {
             e.printStackTrace();
         }
     }
+
+
     private void applyEffects(Player player, String configPath) {
         if (!plugin.getConfig().contains(configPath)) {
             return;
@@ -158,7 +149,6 @@ public class TrapItemListener implements Listener {
         });
     }
 
-
     private boolean isInBannedRegion(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
@@ -169,20 +159,19 @@ public class TrapItemListener implements Listener {
 
         java.util.List<String> bannedRegions = plugin.getConfig().getStringList("trap.banned_regions");
 
-        com.sk89q.worldedit.math.BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
         return regionManager.getApplicableRegions(vector).getRegions()
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));
     }
-
 
     private boolean isRegionNearby(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
 
         if (regionManager != null) {
-            com.sk89q.worldedit.math.BlockVector3 min = BlockVector3.at(location.getBlockX() - 3, location.getBlockY() - 3, location.getBlockZ() - 3);
-            com.sk89q.worldedit.math.BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
+            BlockVector3 min = BlockVector3.at(location.getBlockX() - 3, location.getBlockY() - 3, location.getBlockZ() - 3);
+            BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
 
             ProtectedCuboidRegion checkRegion = new ProtectedCuboidRegion("checkRegion", min, max);
 
@@ -192,15 +181,17 @@ public class TrapItemListener implements Listener {
         return false;
     }
 
-
     private void saveReplacedBlocks(UUID playerId, Location startLocation, Clipboard clipboard) {
         Map<Location, Material> replacedBlocks = new HashMap<>();
-        com.sk89q.worldedit.math.BlockVector3 min = clipboard.getRegion().getMinimumPoint();
-        com.sk89q.worldedit.math.BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+        BlockVector3 min = clipboard.getRegion().getMinimumPoint();
+        BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+        int sizeX = max.getBlockX() - min.getBlockX() + 1;
+        int sizeY = max.getBlockY() - min.getBlockY() + 1;
+        int sizeZ = max.getBlockZ() - min.getBlockZ() + 1;
 
-        int offsetX = -2;
-        int offsetY = -1;
-        int offsetZ = -2;
+        int offsetX = -(sizeX / 2);
+        int offsetY = -(sizeY / 2);
+        int offsetZ = -(sizeZ / 2);
 
         for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
             for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
@@ -230,7 +221,7 @@ public class TrapItemListener implements Listener {
         }
     }
 
-    public void createTrapRegion(Player player, Location location) {
+    public void createTrapRegion(Player player, Location location, double sizeX, double sizeY, double sizeZ) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
 
@@ -238,14 +229,30 @@ public class TrapItemListener implements Listener {
             return;
         }
 
-        com.sk89q.worldedit.math.BlockVector3 min = BlockVector3.at(location.getBlockX() - 2, location.getBlockY() - 2, location.getBlockZ() - 2);
-        com.sk89q.worldedit.math.BlockVector3 max = BlockVector3.at(location.getBlockX() + 2, location.getBlockY() + 3, location.getBlockZ() + 2);
-
+        BlockVector3 min = BlockVector3.at(location.getBlockX() - (sizeX / 2), location.getBlockY() - (sizeY / 2), location.getBlockZ() - (sizeZ / 2));
+        BlockVector3 max = BlockVector3.at(location.getBlockX() + (sizeX / 2), location.getBlockY() + (sizeY / 2), location.getBlockZ() + (sizeZ / 2));
         ProtectedCuboidRegion region = new ProtectedCuboidRegion(player.getName() + "_trap", min, max);
+
+        ConfigurationSection flagsSection = plugin.getConfig().getConfigurationSection("trap.flags");
+        if (flagsSection != null) {
+            for (String flagName : flagsSection.getKeys(false)) {
+                try {
+                    StateFlag flag = (StateFlag) Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
+                    if (flag != null) {
+                        String value = flagsSection.getString(flagName);
+                        StateFlag.State state = StateFlag.State.valueOf(value.toUpperCase());
+                        region.setFlag(flag, state);
+                    }
+                } catch (IllegalArgumentException e) {
+                    player.sendMessage("§cНекорректное значение для флага " + flagName + " в конфиге.");
+                }
+            }
+        }
 
         regionManager.addRegion(region);
         activeTraps.put(player.getName() + "_trap", region);
     }
+
 
     public void removeTrapRegion(String regionName, Location location) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();

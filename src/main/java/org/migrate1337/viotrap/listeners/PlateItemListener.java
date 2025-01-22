@@ -14,6 +14,8 @@ import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
@@ -21,6 +23,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -249,6 +252,21 @@ public class PlateItemListener implements Listener {
         if (regionManager != null) {
             regionManager.addRegion(region);
             activePlates.put(regionName, region);
+        }
+        ConfigurationSection flagsSection = plugin.getConfig().getConfigurationSection("plate.flags");
+        if (flagsSection != null) {
+            for (String flagName : flagsSection.getKeys(false)) {
+                try {
+                    StateFlag flag = (StateFlag) Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
+                    if (flag != null) {
+                        String value = flagsSection.getString(flagName);
+                        StateFlag.State state = StateFlag.State.valueOf(value.toUpperCase());
+                        region.setFlag(flag, state);
+                    }
+                } catch (IllegalArgumentException e) {
+                    player.sendMessage("§cНекорректное значение для флага " + flagName + " в конфиге.");
+                }
+            }
         }
     }
 

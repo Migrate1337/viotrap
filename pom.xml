@@ -6,7 +6,7 @@
 
     <groupId>org.migrate1337</groupId>
     <artifactId>VioTrap</artifactId>
-    <version>1.0</version>
+    <version>1.6</version>
     <packaging>jar</packaging>
 
     <name>VioTrap</name>

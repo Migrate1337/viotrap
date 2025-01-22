@@ -19,6 +19,9 @@ trap:
     - spawn
     - new
     - private
+  flags:
+    PVP: allow
+    BUILD: deny
 
 plate:
   enable-pvp: false #Включать ли пвп при использовании пласта
@@ -50,7 +53,9 @@ plate:
     - spawn
     - new
     - private
-
+  flags:
+    PVP: allow
+    BUILD: deny
 reveal_item:
   type: SUGAR
   display_name: "§eЯвная пыль"
@@ -141,3 +146,7 @@ skins:
       player:
         REGENERATION:
           amplifier: 1
+      sound:
+        type: "ENTITY_WITHER_AMBIENT"
+        volume: 1.0f
+        pitch: 1.0f

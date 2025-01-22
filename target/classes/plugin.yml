@@ -1,5 +1,5 @@
 name: VioTrap
-version: '1.0'
+version: '1.6'
 main: org.migrate1337.viotrap.VioTrap
 api-version: '1.16'
 softdepend:
