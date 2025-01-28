@@ -25,7 +25,6 @@ public class SkinCreationMenu implements Listener {
     public void openMenu(Player player) {
         Inventory inventory = Bukkit.createInventory(null, 9, "Создание скина для трапки");
 
-        // Название скина
         String skinName = (String) plugin.getTempSkinData().getOrDefault("name", "Не задано");
         inventory.setItem(0, createMenuItem(Material.PAPER, "Название скина", "Текущее: " + skinName));
 

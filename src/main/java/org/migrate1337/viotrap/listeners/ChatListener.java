@@ -15,7 +15,7 @@ public class ChatListener implements Listener {
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         if (plugin.getChatInputHandler().handleChatInput(event.getPlayer(), event.getMessage())) {
-            event.setCancelled(true); // Останавливаем дальнейшую обработку сообщения
+            event.setCancelled(true);
         }
     }
 }

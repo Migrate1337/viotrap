@@ -24,8 +24,8 @@ public class GiveItemCommand implements CommandExecutor {
 
         String targetPlayerName = args[1];
         String itemName = args[2];
-        String skinName = args.length == 5 ? args[3] : null; // Скин, если он указан
-        int amountIndex = args.length == 5 ? 4 : 3; // Индекс количества в зависимости от наличия скина
+        String skinName = args.length == 5 ? args[3] : null;
+        int amountIndex = args.length == 5 ? 4 : 3;
         int amount;
 
         try {

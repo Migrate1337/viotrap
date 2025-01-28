@@ -34,15 +34,8 @@ public class PVPManagerHandle {
             if (pvPlayer != null) {
                 if (!pvPlayer.isInCombat()) {
                     pvPlayer.setTagged(true, pvPlayer);  // Помечаем игрока для PvP
-
-                } else {
-
                 }
-            } else {
-
             }
-        } else {
-
         }
     }
 }

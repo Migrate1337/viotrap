@@ -2,7 +2,6 @@ package org.migrate1337.viotrap.commands;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -12,8 +11,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
-
-import java.util.Optional;
 
 public class ApplySkinCommand implements CommandExecutor {
 
@@ -38,7 +35,6 @@ public class ApplySkinCommand implements CommandExecutor {
 
         String skinName = args[0];
 
-        // Проверяем, существует ли скин в конфигурации
         if (!VioTrap.getPlugin().getConfig().contains("skins." + skinName)) {
             sender.sendMessage("§cСкин с названием '" + skinName + "' не найден.");
             return false;
@@ -46,14 +42,12 @@ public class ApplySkinCommand implements CommandExecutor {
 
         Player targetPlayer;
         if (args.length == 2) {
-            // Если указан игрок, находим его
             targetPlayer = Bukkit.getPlayer(args[1]);
             if (targetPlayer == null || !targetPlayer.isOnline()) {
                 sender.sendMessage("§cИгрок '" + args[1] + "' не найден или не в сети.");
                 return false;
             }
         } else {
-            // Если игрок не указан, используем отправителя команды
             if (!(sender instanceof Player)) {
                 sender.sendMessage("§cЭту команду может использовать только игрок.");
                 return false;
@@ -61,7 +55,6 @@ public class ApplySkinCommand implements CommandExecutor {
             targetPlayer = (Player) sender;
         }
 
-        // Проверяем наличие трапок без скинов в инвентаре игрока
         ItemStack[] inventoryContents = targetPlayer.getInventory().getContents();
         int slotWithTrap = -1;
 
@@ -81,16 +74,14 @@ public class ApplySkinCommand implements CommandExecutor {
             return false;
         }
 
-        // Применяем скин только к одной трапке
         ItemStack trapToSkin = inventoryContents[slotWithTrap];
-        ItemStack singleTrap = trapToSkin.clone(); // Копируем предмет для изменения
+        ItemStack singleTrap = trapToSkin.clone();
         singleTrap.setAmount(1);
 
         ItemMeta meta = singleTrap.getItemMeta();
         if (meta != null) {
             meta.getPersistentDataContainer().set(TrapItem.getSkinKey(), PersistentDataType.STRING, skinName);
 
-            // Устанавливаем новое описание из конфигурации
             String newDescription = VioTrap.getPlugin().getConfig().getString("skins." + skinName + ".desc_for_trap");
             if (newDescription != null) {
                 meta.setLore(java.util.Collections.singletonList(newDescription));
@@ -99,10 +90,8 @@ public class ApplySkinCommand implements CommandExecutor {
             singleTrap.setItemMeta(meta);
         }
 
-        // Уменьшаем количество трапок в оригинальном стеке
         trapToSkin.setAmount(trapToSkin.getAmount() - 1);
 
-        // Добавляем предмет с применённым скином обратно в инвентарь
         targetPlayer.getInventory().addItem(singleTrap);
 
         sender.sendMessage("§aСкин '" + skinName + "' успешно применён к одной из трапок игрока " + targetPlayer.getName() + ".");

@@ -11,7 +11,6 @@ public class PlateItem {
 
     private static final NamespacedKey PLATE_ITEM_KEY = new NamespacedKey(VioTrap.getPlugin(VioTrap.class), "plate_item_id");
 
-    // Статичный ID для предмета
     private static final String STATIC_ITEM_ID = "static_plate_item_id";
 
     public static ItemStack getPlateItem(int amount) {
@@ -21,7 +20,6 @@ public class PlateItem {
         if (meta != null) {
             meta.setDisplayName(VioTrap.getPlugin().getPlateDisplayName());
 
-            // Устанавливаем статичный ID как NBT тег
             meta.getPersistentDataContainer().set(
                     PLATE_ITEM_KEY,
                     PersistentDataType.STRING,

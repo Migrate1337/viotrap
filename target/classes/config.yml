@@ -22,7 +22,6 @@ trap:
   flags:
     PVP: allow
     BUILD: deny
-
 plate:
   enable-pvp: false #Включать ли пвп при использовании пласта
   display_name: "§6Пласт"

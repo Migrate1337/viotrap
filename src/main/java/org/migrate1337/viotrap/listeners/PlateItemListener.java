@@ -1,7 +1,5 @@
 package org.migrate1337.viotrap.listeners;
 
-import com.github.sirblobman.combatlogx.api.ICombatLogX;
-import com.github.sirblobman.combatlogx.api.manager.ICombatManager;
 import com.github.sirblobman.combatlogx.api.object.TagReason;
 import com.github.sirblobman.combatlogx.api.object.TagType;
 import com.sk89q.worldedit.EditSession;
@@ -30,9 +28,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginManager;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.PlateItem;
 import org.migrate1337.viotrap.utils.CombatLogXHandler;
@@ -167,7 +162,6 @@ public class PlateItemListener implements Listener {
             com.sk89q.worldedit.math.BlockVector3 min = BlockVector3.at(location.getBlockX() - 3, location.getBlockY() - 3, location.getBlockZ() - 3);
             com.sk89q.worldedit.math.BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
 
-            // Создаём временный регион для проверки пересечения
             ProtectedCuboidRegion checkRegion = new ProtectedCuboidRegion("checkRegion", min, max);
 
             return regionManager.getApplicableRegions(checkRegion).getRegions().stream()

@@ -19,6 +19,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.Container;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,8 +30,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
 
@@ -39,7 +45,7 @@ import java.util.UUID;
 
 public class TrapItemListener implements Listener {
     private final VioTrap plugin;
-    private final Map<UUID, Map<Location, Material>> playerReplacedBlocks = new HashMap<>();
+    private final Map<UUID, Map<Location, BlockData>> playerReplacedBlocks = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activeTraps = new HashMap<>();
 
     public TrapItemListener(VioTrap plugin) {
@@ -182,7 +188,7 @@ public class TrapItemListener implements Listener {
     }
 
     private void saveReplacedBlocks(UUID playerId, Location startLocation, Clipboard clipboard) {
-        Map<Location, Material> replacedBlocks = new HashMap<>();
+        Map<Location, BlockData> replacedBlocks = new HashMap<>();
         BlockVector3 min = clipboard.getRegion().getMinimumPoint();
         BlockVector3 max = clipboard.getRegion().getMaximumPoint();
         int sizeX = max.getBlockX() - min.getBlockX() + 1;
@@ -201,7 +207,13 @@ public class TrapItemListener implements Listener {
                             y - min.getBlockY() + offsetY,
                             z - min.getBlockZ() + offsetZ
                     );
-                    replacedBlocks.put(blockLocation, blockLocation.getBlock().getType());
+                    Block block = blockLocation.getBlock();
+                    BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null);
+                    if (block.getState() instanceof Container) {
+                        Container container = (Container) block.getState();
+                        blockData.setContents(container.getInventory().getContents());
+                    }
+                    replacedBlocks.put(blockLocation, blockData);
                 }
             }
         }
@@ -210,12 +222,19 @@ public class TrapItemListener implements Listener {
     }
 
     private void restoreBlocks(UUID playerId) {
-        Map<Location, Material> replacedBlocks = playerReplacedBlocks.get(playerId);
+        Map<Location, BlockData> replacedBlocks = playerReplacedBlocks.get(playerId);
         if (replacedBlocks != null) {
-            for (Map.Entry<Location, Material> entry : replacedBlocks.entrySet()) {
+            for (Map.Entry<Location, BlockData> entry : replacedBlocks.entrySet()) {
                 Location location = entry.getKey();
-                Material originalMaterial = entry.getValue();
-                location.getBlock().setType(originalMaterial);
+                BlockData blockData = entry.getValue();
+                Block block = location.getBlock();
+                block.setType(blockData.getMaterial());
+                block.setBlockData(blockData.getBlockData());
+
+                if (block.getState() instanceof Container) {
+                    Container container = (Container) block.getState();
+                    container.getInventory().setContents(blockData.getContents());
+                }
             }
             playerReplacedBlocks.remove(playerId);
         }
@@ -253,7 +272,6 @@ public class TrapItemListener implements Listener {
         activeTraps.put(player.getName() + "_trap", region);
     }
 
-
     public void removeTrapRegion(String regionName, Location location) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
@@ -261,6 +279,34 @@ public class TrapItemListener implements Listener {
         if (regionManager != null) {
             regionManager.removeRegion(regionName);
             activeTraps.remove(regionName);
+        }
+    }
+
+    private static class BlockData {
+        private Material material;
+        private org.bukkit.block.data.BlockData blockData;
+        private ItemStack[] contents;
+
+        public BlockData(Material material, org.bukkit.block.data.BlockData blockData, ItemStack[] contents) {
+            this.material = material;
+            this.blockData = blockData;
+            this.contents = contents;
+        }
+
+        public Material getMaterial() {
+            return material;
+        }
+
+        public org.bukkit.block.data.BlockData getBlockData() {
+            return blockData;
+        }
+
+        public ItemStack[] getContents() {
+            return contents;
+        }
+
+        public void setContents(ItemStack[] contents) {
+            this.contents = contents;
         }
     }
 }

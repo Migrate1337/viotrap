@@ -35,7 +35,7 @@ public class DisorientItemListener implements Listener {
     public DisorientItemListener(VioTrap plugin) {
         this.plugin = plugin;
         this.combatLogXHandler = new CombatLogXHandler();
-        this.pvpManagerHandler = new PVPManagerHandle();  // Инициализация PvPManagerHandler
+        this.pvpManagerHandler = new PVPManagerHandle();
     }
 
     @EventHandler

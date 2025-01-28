@@ -84,7 +84,7 @@ public class DivineAuraItemListener implements Listener {
                 if (effectType != null) {
                     int duration = (int) effectDetails.get("duration") * 20;
                     int amplifier = (int) effectDetails.get("amplifier");
-                    player.addPotionEffect(new PotionEffect(effectType, duration, amplifier)); // Накладываем позитивный эффект
+                    player.addPotionEffect(new PotionEffect(effectType, duration, amplifier));
                 }
             }
         }
