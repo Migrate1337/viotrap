@@ -7,6 +7,9 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 import org.migrate1337.viotrap.VioTrap;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TrapItem {
     private static final NamespacedKey TRAP_ITEM_KEY = new NamespacedKey(VioTrap.getPlugin(VioTrap.class), "trap_item_id");
     private static final NamespacedKey SKIN_KEY = new NamespacedKey(VioTrap.getPlugin(VioTrap.class), "trap_skin");
@@ -17,7 +20,8 @@ public class TrapItem {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(VioTrap.getPlugin().getTrapDisplayName());
-            meta.setLore(java.util.Collections.singletonList(VioTrap.getPlugin().getTrapDescription()));
+            List<String> lore = VioTrap.getPlugin().getTrapDescription();
+            meta.setLore(lore);
 
             meta.getPersistentDataContainer().set(TRAP_ITEM_KEY, PersistentDataType.STRING, DEFAULT_TRAP_ID);
 

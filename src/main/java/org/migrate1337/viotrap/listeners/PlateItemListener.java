@@ -22,11 +22,13 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.PlateItem;
@@ -40,7 +42,6 @@ import java.util.*;
 public class PlateItemListener implements Listener {
     private final VioTrap plugin;
     private final Map<UUID, Map<Location, Material>> playerReplacedBlocks = new HashMap<>();
-    private final Map<UUID, Long> lastUseTime = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activePlates = new HashMap<>();
     private final CombatLogXHandler combatLogXHandler;
     private final PVPManagerHandle pvpManagerHandler;
@@ -70,7 +71,7 @@ public class PlateItemListener implements Listener {
 
             Location location = player.getLocation();
             String worldName = location.getWorld().getName();
-
+            savePlateToConfig(player, location);
             if (isInBannedRegion(location, worldName)) {
                 player.sendMessage("§cВы не можете установить пласт в этом регионе!");
                 return;
@@ -127,6 +128,7 @@ public class PlateItemListener implements Listener {
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         restoreBlocks(player.getUniqueId());
                         removePlateRegion(player, location);
+                        removePlateFromFile(location);
                     }, durationTicks);
                 }
 
@@ -153,7 +155,23 @@ public class PlateItemListener implements Listener {
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));
     }
+    public void removeAllPlates() {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
 
+        for (org.bukkit.World world : Bukkit.getWorlds()) {
+            RegionManager regionManager = container.get(BukkitAdapter.adapt(world));
+
+            if (regionManager != null) {
+                for (String regionName : regionManager.getRegions().keySet()) {
+                    if (regionName.endsWith("plate_")) {
+                        regionManager.removeRegion(regionName);
+                    }
+                }
+            }
+        }
+        restoreAllBlocks();
+        activePlates.clear();
+    }
     private boolean isRegionNearby(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
@@ -222,19 +240,6 @@ public class PlateItemListener implements Listener {
         playerReplacedBlocks.put(playerId, replacedBlocks);
     }
 
-
-    private void restoreBlocks(UUID playerId) {
-        if (playerReplacedBlocks.containsKey(playerId)) {
-            Map<Location, Material> replacedBlocks = playerReplacedBlocks.get(playerId);
-            for (Map.Entry<Location, Material> entry : replacedBlocks.entrySet()) {
-                Location loc = entry.getKey();
-                Material originalType = entry.getValue();
-                loc.getBlock().setType(originalType);
-            }
-            playerReplacedBlocks.remove(playerId);
-        }
-    }
-
     private void createPlateRegion(Player player, Location location, int pos1X, int pos1Y, int pos1Z, int pos2X, int pos2Y, int pos2Z) {
         String regionName = "plate_" + player.getName();
         ProtectedCuboidRegion region = new ProtectedCuboidRegion(regionName, BlockVector3.at(location.getBlockX() - pos1X, location.getBlockY() - pos1Y, location.getBlockZ() - pos1Z),
@@ -298,5 +303,77 @@ public class PlateItemListener implements Listener {
             this.pos2Z = pos2Z;
             this.schematicName = schematicName;
         }
+    }
+    public void restoreAllBlocks() {
+        Bukkit.getLogger().info("[VioTrap] Вызван restoreAllBlocks() для пластов!");
+
+        if (playerReplacedBlocks.isEmpty()) {
+            Bukkit.getLogger().info("[VioTrap] playerReplacedBlocks пуст, загружаем данные из конфига...");
+            loadPlatesFromConfig();
+        }
+
+        for (UUID playerId : new HashSet<>(playerReplacedBlocks.keySet())) {
+            restoreBlocks(playerId);
+        }
+
+        Bukkit.getLogger().info("[VioTrap] Все пласты успешно восстановлены.");
+    }
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        playerReplacedBlocks.remove(playerId);
+    }
+
+    private void restoreBlocks(UUID playerId) {
+        Map<Location, Material> replacedBlocks = playerReplacedBlocks.get(playerId);
+        if (replacedBlocks != null) {
+            for (Map.Entry<Location, Material> entry : replacedBlocks.entrySet()) {
+                Location location = entry.getKey();
+                location.getBlock().setType(entry.getValue());
+                removePlateFromFile(location);
+            }
+            playerReplacedBlocks.remove(playerId);
+        }
+    }
+    private void loadPlatesFromConfig() {
+        Bukkit.getLogger().info("[VioTrap] Загружаем пласты из plats.yml...");
+        if (!plugin.getPlatesConfig().contains("plates")) return;
+
+        ConfigurationSection platesSection = plugin.getPlatesConfig().getConfigurationSection("plates");
+        for (String worldName : platesSection.getKeys(false)) {
+            ConfigurationSection worldSection = platesSection.getConfigurationSection(worldName);
+            if (worldSection == null) continue;
+
+            for (String plateKey : worldSection.getKeys(false)) {
+                ConfigurationSection plateSection = worldSection.getConfigurationSection(plateKey);
+                if (plateSection == null) continue;
+
+                UUID playerId = UUID.fromString(plateSection.getString("player"));
+                String world = plateSection.getString("world");
+                int x = plateSection.getInt("x");
+                int y = plateSection.getInt("y");
+                int z = plateSection.getInt("z");
+
+                Location location = new Location(Bukkit.getWorld(world), x, y, z);
+
+                playerReplacedBlocks.putIfAbsent(playerId, new HashMap<>());
+                playerReplacedBlocks.get(playerId).put(location, location.getBlock().getType());
+            }
+        }
+        Bukkit.getLogger().info("[VioTrap] Загружено " + playerReplacedBlocks.size() + " активных пластов.");
+    }
+    private void savePlateToConfig(Player player, Location location) {
+        String path = "plates." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
+        plugin.getPlatesConfig().set(path + ".player", player.getUniqueId().toString());
+        plugin.getPlatesConfig().set(path + ".world", location.getWorld().getName());
+        plugin.getPlatesConfig().set(path + ".x", location.getBlockX());
+        plugin.getPlatesConfig().set(path + ".y", location.getBlockY());
+        plugin.getPlatesConfig().set(path + ".z", location.getBlockZ());
+        plugin.savePlatesConfig();
+    }
+    private void removePlateFromFile(Location location) {
+        String path = "plates." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
+        plugin.getPlatesConfig().set(path, null);
+        plugin.savePlatesConfig();
     }
 }

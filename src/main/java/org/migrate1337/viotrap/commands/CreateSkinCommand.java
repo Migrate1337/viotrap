@@ -15,19 +15,18 @@ public class CreateSkinCommand implements CommandExecutor {
         this.plugin = plugin;
     }
 
-    @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
             sender.sendMessage("§cЭту команду можно использовать только игроку.");
             return true;
-        }
-        if(!sender.hasPermission("viotrap.createskin")) {
-            sender.sendMessage(ChatColor.RED + "У вас нет прав на использование данной команды!");
+        } else if (!sender.hasPermission("viotrap.createskin")) {
+            sender.sendMessage(String.valueOf(ChatColor.RED) + "У вас нет прав на использование данной команды!");
             return false;
+        } else {
+            Player player = (Player)sender;
+            SkinCreationMenu menu = new SkinCreationMenu(this.plugin);
+            menu.openMenu(player);
+            return true;
         }
-        Player player = (Player) sender;
-        SkinCreationMenu menu = new SkinCreationMenu(plugin);
-        menu.openMenu(player);
-        return true;
     }
 }

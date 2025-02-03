@@ -24,33 +24,27 @@ public class SkinCreationMenu implements Listener {
 
     public void openMenu(Player player) {
         Inventory inventory = Bukkit.createInventory(null, 9, "Создание скина для трапки");
-
-        String skinName = (String) plugin.getTempSkinData().getOrDefault("name", "Не задано");
-        inventory.setItem(0, createMenuItem(Material.PAPER, "Название скина", "Текущее: " + skinName));
-
-
-        String schematic = (String) plugin.getTempSkinData().getOrDefault("schem", "Не задано");
-        inventory.setItem(2, createMenuItem(Material.CHEST, "Схематика", "Текущая: " + schematic));
-
-
-        String desc = (String) plugin.getTempSkinData().getOrDefault("desc_for_trap", "Не задано");
-        inventory.setItem(4, createMenuItem(Material.BOOK, "Описание для трапки", "Текущее: " + desc));
-
-
-        String sound = (String) plugin.getTempSkinData().getOrDefault("sound.type", "Не задано");
-        inventory.setItem(5, createMenuItem(Material.NOTE_BLOCK, "Тип звука", "Текущий: " + sound));
-
-        String opponentEffect = (String) plugin.getTempSkinData().getOrDefault("opponent_effect", "Не задано");
-        ItemStack opponentEffectItem = createMenuItem(Material.SPIDER_EYE, "Эффект для противников", "Текущий: " + opponentEffect);
-        inventory.setItem(6, opponentEffectItem);
-
-        String playerEffect = (String) plugin.getTempSkinData().getOrDefault("player_effect", "Не задано");
-        ItemStack playerEffectItem = createMenuItem(Material.GOLDEN_APPLE, "Эффект для игрока", "Текущий: " + playerEffect);
-        inventory.setItem(7, playerEffectItem);
-
-        inventory.setItem(8, createMenuItem(Material.GREEN_WOOL, "Сохранить", "Сохранить новый скин"));
-
+        updateItems(inventory);
         player.openInventory(inventory);
+    }
+
+    private void updateMenu(Player player) {
+        Inventory inventory = player.getOpenInventory().getTopInventory();
+        if (inventory == null || !player.getOpenInventory().getType().equals(Bukkit.createInventory(null, 9).getType())) {
+            openMenu(player); // Если меню закрыто, открываем заново
+        } else {
+            updateItems(inventory); // Если открыто, просто обновляем предметы
+        }
+    }
+
+    private void updateItems(Inventory inventory) {
+        inventory.setItem(0, createMenuItem(Material.PAPER, "Название скина", "Текущее: " + plugin.getTempSkinData().getOrDefault("name", "Не задано")));
+        inventory.setItem(2, createMenuItem(Material.CHEST, "Схематика", "Текущая: " + plugin.getTempSkinData().getOrDefault("schem", "Не задано")));
+        inventory.setItem(4, createMenuItem(Material.BOOK, "Описание для трапки", "Текущее: " + plugin.getTempSkinData().getOrDefault("desc_for_trap", "Не задано")));
+        inventory.setItem(5, createMenuItem(Material.NOTE_BLOCK, "Тип звука", "Текущий: " + plugin.getTempSkinData().getOrDefault("sound.type", "Не задано")));
+        inventory.setItem(6, createMenuItem(Material.SPIDER_EYE, "Эффект для противников", "Текущий: " + plugin.getTempSkinData().getOrDefault("opponent_effect", "Не задано")));
+        inventory.setItem(7, createMenuItem(Material.GOLDEN_APPLE, "Эффект для игрока", "Текущий: " + plugin.getTempSkinData().getOrDefault("player_effect", "Не задано")));
+        inventory.setItem(8, createMenuItem(Material.GREEN_WOOL, "Сохранить", "Сохранить новый скин"));
     }
 
     private ItemStack createMenuItem(Material material, String name, String lore) {
@@ -81,28 +75,9 @@ public class SkinCreationMenu implements Listener {
             case "Схематика" -> handleInput(player, "schem", "Введите название схематики в чат:");
             case "Описание для трапки" -> handleInput(player, "desc_for_trap", "Введите описание для трапки в чат (поддерживается кодировка & и #):");
             case "Тип звука" -> handleInput(player, "sound.type", "Введите тип звука (например, ENTITY_WITHER_AMBIENT):");
-            case "Эффект для противников" -> {
-                player.closeInventory();
-                player.sendMessage("Введите тип эффекта для противников (например, NAUSEA. Больше эффектов вы можете добавить в конфиге):");
-                plugin.getChatInputHandler().waitForInput(player, input -> {
-                    plugin.getTempSkinData().put("opponent_effect", input.toUpperCase());
-                    player.sendMessage("§aЭффект для противников установлен: " + input);
-
-                    Bukkit.getScheduler().runTask(plugin, () -> openMenu(player));
-                });
-            }
-            case "Эффект для игрока" -> {
-                player.closeInventory();
-                player.sendMessage("Введите тип эффекта для игрока (например, REGENERATION. Больше эффектов вы можете добавить в конфиге):");
-                plugin.getChatInputHandler().waitForInput(player, input -> {
-                    plugin.getTempSkinData().put("player_effect", input.toUpperCase());
-                    player.sendMessage("§aЭффект для игрока установлен: " + input);
-
-                    Bukkit.getScheduler().runTask(plugin, () -> openMenu(player));
-                });
-            }
+            case "Эффект для противников" -> handleEffectInput(player, "opponent_effect", "Введите эффект для противников (например, NAUSEA):");
+            case "Эффект для игрока" -> handleEffectInput(player, "player_effect", "Введите эффект для игрока (например, REGENERATION):");
             case "Сохранить" -> saveSkin(player);
-
         }
     }
 
@@ -112,30 +87,40 @@ public class SkinCreationMenu implements Listener {
         plugin.getChatInputHandler().waitForInput(player, input -> {
             if (key.equals("sound.type")) {
                 try {
-                    Sound.valueOf(input); // Проверка на существование звука
+                    Sound.valueOf(input);
                 } catch (IllegalArgumentException e) {
                     player.sendMessage("§cУказан недопустимый тип звука. Попробуйте снова.");
                     return;
                 }
             }
-
             if (key.equals("desc_for_trap")) {
                 input = org.bukkit.ChatColor.translateAlternateColorCodes('&', input);
             }
 
             plugin.getTempSkinData().put(key, input);
             player.sendMessage("§a" + key + " установлен: " + input);
-            Bukkit.getScheduler().runTask(plugin, () -> openMenu(player));
+            Bukkit.getScheduler().runTask(plugin, () -> updateMenu(player));
+        });
+    }
+
+    private void handleEffectInput(Player player, String key, String message) {
+        player.closeInventory();
+        player.sendMessage(message);
+        plugin.getChatInputHandler().waitForInput(player, input -> {
+            plugin.getTempSkinData().put(key, input.toUpperCase());
+            player.sendMessage("§a" + key + " установлен: " + input);
+            Bukkit.getScheduler().runTask(plugin, () -> updateMenu(player));
         });
     }
 
     private void saveSkin(Player player) {
-        String skinName = (String) plugin.getTempSkinData().get("name");
-        String schematic = (String) plugin.getTempSkinData().get("schem");
-        String description = (String) plugin.getTempSkinData().get("desc_for_trap");
-        String sound = (String) plugin.getTempSkinData().get("sound.type");
-        String opponentEffect = (String) plugin.getTempSkinData().get("opponent_effect");
-        String playerEffect = (String) plugin.getTempSkinData().get("player_effect");
+        String skinName = plugin.getTempSkinData().get("name");
+        String schematic = plugin.getTempSkinData().get("schem");
+        String description = plugin.getTempSkinData().get("desc_for_trap");
+        String sound = plugin.getTempSkinData().get("sound.type");
+        String opponentEffect = plugin.getTempSkinData().get("opponent_effect");
+        String playerEffect = plugin.getTempSkinData().get("player_effect");
+
         if (skinName == null || schematic == null || description == null || sound == null) {
             player.sendMessage("§cПожалуйста, заполните все поля!");
             return;

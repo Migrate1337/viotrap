@@ -2,7 +2,9 @@ trap:
   enable-pvp: false #Включать ли пвп при использовании трапки
   schematic: "trap.schem"
   display_name: "§6Трапка"
-  description: "§7Используйте, чтобы установить ловушку!"
+  description:
+    - "§7Используйте, чтобы установить ловушку!"
+    - "fsdfdsfdsfsdfds"
   type: "NETHERITE_SCRAP"
   cooldown: 20
   duration: 15
@@ -10,7 +12,7 @@ trap:
     already_nearby: "Рядом уже установлен активный пласт или трапка!"
     cooldown_message: "§cПодождите перед использованием снова!"
     trap_failed: "Не удалось загрузить ловушку!"
-    pvp-enable: "§cВы использовали трапку и получили режим пвп!"
+    pvp-enabled: "§cВы использовали трапку и получили режим пвп!"
   sound:
     type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
     volume: 10.0f # Громкость звука.
@@ -135,17 +137,3 @@ divine_aura:
     - new
     - private
 skins:
-  wooden:
-    schem: wooden.schem
-    desc_for_trap: §7Скин§6[Деревянный]
-    effects:
-      opponents:
-        NAUSEA:
-          amplifier: 1
-      player:
-        REGENERATION:
-          amplifier: 1
-      sound:
-        type: "ENTITY_WITHER_AMBIENT"
-        volume: 1.0f
-        pitch: 1.0f

@@ -1,13 +1,11 @@
 package org.migrate1337.viotrap;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffectType;
 import org.migrate1337.viotrap.commands.ApplySkinCommand;
 import org.migrate1337.viotrap.commands.CreateSkinCommand;
 import org.migrate1337.viotrap.commands.GiveItemCommand;
@@ -17,8 +15,9 @@ import org.migrate1337.viotrap.listeners.ChatListener;
 import org.migrate1337.viotrap.utils.GiveItemTabCompleter;
 import org.migrate1337.viotrap.utils.ChatInputHandler;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public final class VioTrap extends JavaPlugin {
 
@@ -26,7 +25,7 @@ public final class VioTrap extends JavaPlugin {
     private static FileConfiguration config;
 
     private String trapDisplayName;
-    private String trapDescription;
+    private List<String> trapDescription;
     private String trapType;
     private int trapCooldown;
     private int trapDuration;
@@ -39,7 +38,7 @@ public final class VioTrap extends JavaPlugin {
     private float trapSoundVolume;
     private float trapSoundPitch;
     private String plateDisplayName;
-    private String plateDescription;
+    private List<String> plateDescription;
     private String plateType;
     private int plateCooldown;
     private int plateDuration;
@@ -90,10 +89,14 @@ public final class VioTrap extends JavaPlugin {
     private String divineAuraSoundType;
     private float divineAuraSoundVolume;
     private float divineAuraSoundPitch;
-
+    private TrapItemListener trapItemListener;
+    private PlateItemListener plateItemListener;
     private ChatInputHandler chatInputHandler;
     private Map<String, String> tempSkinData;
-
+    private File trapsFile;
+    private File platesFile;
+    private FileConfiguration trapsConfig;
+    private FileConfiguration platesConfig;
     @Override
     public void onEnable() {
         plugin = this;
@@ -105,12 +108,16 @@ public final class VioTrap extends JavaPlugin {
         loadPlateConfig();
         loadRevealItemConfig();
         loadDivineAuraItemConfig();
-
+        loadTrapsConfig();
+        loadPlatesConfig();
         getCommand("viotrap").setExecutor(new GiveItemCommand());
         getCommand("viotrap").setTabCompleter(new GiveItemTabCompleter());
 
+        trapItemListener = new TrapItemListener(this);
+        getServer().getPluginManager().registerEvents(trapItemListener, this);
+        plateItemListener = new PlateItemListener(this);
+        getServer().getPluginManager().registerEvents(plateItemListener, this);
         getServer().getPluginManager().registerEvents(new RevealItemListener(this), this);
-        getServer().getPluginManager().registerEvents(new TrapItemListener(this), this);
         getServer().getPluginManager().registerEvents(new PlateItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DisorientItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DivineAuraItemListener(this), this);
@@ -118,21 +125,87 @@ public final class VioTrap extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getCommand("createskin").setExecutor(new CreateSkinCommand(this));
         getCommand("applyskin").setExecutor(new ApplySkinCommand(this));
-        getServer().getPluginManager().registerEvents(new Listener() {
-            @EventHandler
-            public void onInventoryClick(InventoryClickEvent event) {
-                new SkinCreationMenu(VioTrap.this).onMenuClick(event);
-            }
-        }, this);
+
         chatInputHandler = new ChatInputHandler();
         tempSkinData = new HashMap<>();
 
-
+        Bukkit.getLogger().info("[VioTrap] Плагин успешно загружен!");
     }
 
-    private void loadTrapConfig() {
+    public void onDisable() {
+        if (trapItemListener != null) {
+            Bukkit.getLogger().info("[VioTrap] Выключение сервера, восстанавливаем блоки...");
+            trapItemListener.removeAllTraps();
+        } else {
+            Bukkit.getLogger().warning("[VioTrap] trapItemListener == null, restoreAllBlocks() не вызван!");
+        }
+        if (plateItemListener != null) {
+            Bukkit.getLogger().info("[VioTrap] Выключение сервера, восстанавливаем блоки...");
+            plateItemListener.removeAllPlates();
+        } else {
+            Bukkit.getLogger().warning("[VioTrap] trapItemListener == null, restoreAllBlocks() не вызван!");
+        }
+        Bukkit.getLogger().info("[VioTrap] Плагин VioTrap успешно отключен.");
+    }
+    public void loadTrapsConfig() {
+        trapsFile = new File(getDataFolder(), "traps.yml");
+
+        if (!trapsFile.exists()) {
+            try {
+                trapsFile.createNewFile();
+            } catch (IOException e) {
+                getLogger().severe("Не удалось создать traps.yml!");
+                e.printStackTrace();
+            }
+        }
+
+        trapsConfig = YamlConfiguration.loadConfiguration(trapsFile);
+
+        trapsConfig.set("traps", null);
+        saveTrapsConfig();
+    }
+
+
+    public void saveTrapsConfig() {
+        try {
+            trapsConfig.save(trapsFile);
+        } catch (IOException e) {
+            getLogger().severe("Не удалось сохранить traps.yml!");
+            e.printStackTrace();
+        }
+    }
+    public void loadPlatesConfig() {
+        platesFile = new File(plugin.getDataFolder(), "plats.yml");
+        if (!platesFile.exists()) {
+            try {
+                platesFile.createNewFile();
+            } catch (IOException e) {
+                Bukkit.getLogger().severe("Не удалось создать plats.yml!");
+                e.printStackTrace();
+            }
+        }
+        platesConfig = YamlConfiguration.loadConfiguration(platesFile);
+    }
+
+    public void savePlatesConfig() {
+        try {
+            platesConfig.save(platesFile);
+        } catch (IOException e) {
+            Bukkit.getLogger().severe("Не удалось сохранить plats.yml!");
+            e.printStackTrace();
+        }
+    }
+    public FileConfiguration getTrapsConfig() {
+        return trapsConfig;
+    }
+
+    public FileConfiguration getPlatesConfig() {
+        return platesConfig;
+    }
+
+    public void loadTrapConfig() {
         trapDisplayName = config.getString("trap.display_name");
-        trapDescription = config.getString("trap.description");
+        trapDescription = config.getStringList("trap.description");
         trapType = config.getString("trap.type");
         trapCooldown = config.getInt("trap.cooldown");
         trapDuration = config.getInt("trap.duration");
@@ -145,9 +218,9 @@ public final class VioTrap extends JavaPlugin {
         trapSoundPitch =  plateSoundPitch = (float) config.getDouble("trap.sound.pitch", 1.0);
     }
 
-    private void loadPlateConfig() {
+    public void loadPlateConfig() {
         plateDisplayName = config.getString("plate.display_name", "§6Пласт");
-        plateDescription = config.getString("plate.description", "§7Используйте, чтобы установить пласт!");
+        plateDescription = config.getStringList("plate.description");
         plateType = config.getString("plate.type");
         plateCooldown = config.getInt("plate.cooldown", 1);
         plateDuration = config.getInt("plate.duration", 5);
@@ -168,7 +241,7 @@ public final class VioTrap extends JavaPlugin {
         plateUpSchematic = config.getString("plate.up_schematic", "plate_up.schem");
         plateDownSchematic = config.getString("plate.down_schematic", "plate.schem");
     }
-    private void loadRevealItemConfig() {
+    public void loadRevealItemConfig() {
         revealItemType = config.getString("reveal_item.type");
         revealItemDisplayName = config.getString("reveal_item.display_name");
         revealItemDescription = config.getStringList("disorient_item.description");
@@ -181,7 +254,7 @@ public final class VioTrap extends JavaPlugin {
         revealItemGlowDuration = config.getInt("reveal_item.glow_duration");
     }
 
-    private void loadDivineAuraItemConfig() {
+    public void loadDivineAuraItemConfig() {
         divineAuraItemName = config.getString("divine_aura.name", "Божья Аура");
         divineAuraItemMaterial = Material.getMaterial(config.getString("divine_aura.material", "GHAST_TEAR"));
         divineAuraItemDescription = config.getStringList("divine_aura.description");
@@ -203,7 +276,7 @@ public final class VioTrap extends JavaPlugin {
     public String getTrapSchematic() {
         return trapSchematic;
     }
-    public String getTrapDescription() {
+    public List<String> getTrapDescription() {
         return trapDescription;
     }
 
@@ -243,7 +316,7 @@ public final class VioTrap extends JavaPlugin {
         return plateDisplayName;
     }
 
-    public String getPlateDescription() {
+    public List<String> getPlateDescription() {
         return plateDescription;
     }
 
@@ -441,5 +514,8 @@ public final class VioTrap extends JavaPlugin {
             return new ArrayList<>(skinsSection.getKeys(false));
         }
         return Collections.emptyList();
+    }
+    public TrapItemListener getTrapItemListener() {
+        return trapItemListener;
     }
 }

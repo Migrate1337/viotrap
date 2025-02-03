@@ -1,5 +1,7 @@
 package org.migrate1337.viotrap.listeners;
 
+import com.github.sirblobman.combatlogx.api.object.TagReason;
+import com.github.sirblobman.combatlogx.api.object.TagType;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -29,6 +31,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -36,10 +39,13 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
+import org.migrate1337.viotrap.utils.CombatLogXHandler;
+import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 
@@ -47,8 +53,11 @@ public class TrapItemListener implements Listener {
     private final VioTrap plugin;
     private final Map<UUID, Map<Location, BlockData>> playerReplacedBlocks = new HashMap<>();
     private final Map<String, ProtectedCuboidRegion> activeTraps = new HashMap<>();
-
+    private final CombatLogXHandler combatLogXHandler;
+    private final PVPManagerHandle pvpManagerHandler;
     public TrapItemListener(VioTrap plugin) {
+        this.combatLogXHandler = new CombatLogXHandler();
+        this.pvpManagerHandler = new PVPManagerHandle();
         this.plugin = plugin;
     }
 
@@ -71,6 +80,7 @@ public class TrapItemListener implements Listener {
         }
 
         Location location = player.getLocation();
+        saveTrapToConfig(player, location);
         String skin = TrapItem.getSkin(item);
         String schematic = plugin.getSkinSchematic(skin);
         if (!plugin.getConfig().contains("skins." + skin)) {
@@ -87,7 +97,16 @@ public class TrapItemListener implements Listener {
             player.sendMessage(plugin.getTrapMessageNearby());
             return;
         }
-
+        if(plugin.getConfig().getString("trap.enable-pvp") == "true"){
+            if (combatLogXHandler.isCombatLogXEnabled()) {
+                combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
+                player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled"));
+            }
+            if (pvpManagerHandler.isPvPManagerEnabled()) {
+                pvpManagerHandler.tagPlayerForPvP(player);
+                player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled"));
+            }
+        }
 
         String soundType = plugin.getConfig().getString("skins." + skin + ".sound.type", plugin.getTrapSoundType());
         float soundVolume = (float) plugin.getConfig().getDouble("skins." + skin + ".sound.volume", plugin.getTrapSoundVolume());
@@ -127,6 +146,7 @@ public class TrapItemListener implements Listener {
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         restoreBlocks(player.getUniqueId());
                         removeTrapRegion(player.getName() + "_trap", location);
+                        removeTrapFromFile(location);
                     }, plugin.getTrapDuration() * 20);
                 }
 
@@ -136,6 +156,20 @@ public class TrapItemListener implements Listener {
             player.sendMessage(plugin.getTrapMessageFailed());
             e.printStackTrace();
         }
+    }
+    private void removeTrapFromFile(Location location) {
+        String path = "traps." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
+        plugin.getTrapsConfig().set(path, null);
+        plugin.saveTrapsConfig();
+    }
+    private void saveTrapToConfig(Player player, Location location) {
+        String path = "traps." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
+        plugin.getTrapsConfig().set(path + ".player", player.getUniqueId().toString());
+        plugin.getTrapsConfig().set(path + ".world", location.getWorld().getName());
+        plugin.getTrapsConfig().set(path + ".x", location.getBlockX());
+        plugin.getTrapsConfig().set(path + ".y", location.getBlockY());
+        plugin.getTrapsConfig().set(path + ".z", location.getBlockZ());
+        plugin.saveTrapsConfig(); // Теперь сохраняем в `traps.yml`
     }
 
 
@@ -221,6 +255,29 @@ public class TrapItemListener implements Listener {
         playerReplacedBlocks.put(playerId, replacedBlocks);
     }
 
+    public void restoreAllBlocks() {
+        Bukkit.getLogger().info("[VioTrap] Вызван restoreAllBlocks()!");
+
+        if (playerReplacedBlocks.isEmpty()) {
+            Bukkit.getLogger().info("[VioTrap] playerReplacedBlocks пуст, загружаем данные из конфига...");
+            loadTrapsFromConfig();
+        }
+
+        for (UUID playerId : new HashSet<>(playerReplacedBlocks.keySet())) {
+            restoreBlocks(playerId);
+        }
+
+        Bukkit.getLogger().info("[VioTrap] Все блоки успешно восстановлены.");
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        if (playerReplacedBlocks.containsKey(playerId)) {
+            playerReplacedBlocks.remove(playerId);
+        }
+    }
+
     private void restoreBlocks(UUID playerId) {
         Map<Location, BlockData> replacedBlocks = playerReplacedBlocks.get(playerId);
         if (replacedBlocks != null) {
@@ -235,10 +292,45 @@ public class TrapItemListener implements Listener {
                     Container container = (Container) block.getState();
                     container.getInventory().setContents(blockData.getContents());
                 }
+
+                removeTrapFromFile(location);
             }
             playerReplacedBlocks.remove(playerId);
         }
     }
+
+    private void loadTrapsFromConfig() {
+        Bukkit.getLogger().info("[VioTrap] Загружаем ловушки из traps.yml...");
+        if (!plugin.getTrapsConfig().contains("traps")) return;
+
+        ConfigurationSection trapsSection = plugin.getTrapsConfig().getConfigurationSection("traps");
+        for (String worldName : trapsSection.getKeys(false)) {
+            ConfigurationSection worldSection = trapsSection.getConfigurationSection(worldName);
+            if (worldSection == null) continue;
+
+            for (String trapKey : worldSection.getKeys(false)) {
+                ConfigurationSection trapSection = worldSection.getConfigurationSection(trapKey);
+                if (trapSection == null) continue;
+
+                UUID playerId = UUID.fromString(trapSection.getString("player"));
+                String world = trapSection.getString("world");
+                int x = trapSection.getInt("x");
+                int y = trapSection.getInt("y");
+                int z = trapSection.getInt("z");
+
+                Location location = new Location(Bukkit.getWorld(world), x, y, z);
+
+                playerReplacedBlocks.putIfAbsent(playerId, new HashMap<>());
+
+                Block block = location.getBlock();
+                BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null);
+                playerReplacedBlocks.get(playerId).put(location, blockData);
+            }
+        }
+        Bukkit.getLogger().info("[VioTrap] Загружено " + playerReplacedBlocks.size() + " активных ловушек.");
+    }
+
+
 
     public void createTrapRegion(Player player, Location location, double sizeX, double sizeY, double sizeZ) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
@@ -281,7 +373,23 @@ public class TrapItemListener implements Listener {
             activeTraps.remove(regionName);
         }
     }
+    public void removeAllTraps() {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
 
+        for (org.bukkit.World world : Bukkit.getWorlds()) {
+            RegionManager regionManager = container.get(BukkitAdapter.adapt(world));
+
+            if (regionManager != null) {
+                for (String regionName : regionManager.getRegions().keySet()) {
+                    if (regionName.endsWith("_trap")) {
+                        regionManager.removeRegion(regionName);
+                    }
+                }
+            }
+        }
+        restoreAllBlocks();
+        activeTraps.clear();
+    }
     private static class BlockData {
         private Material material;
         private org.bukkit.block.data.BlockData blockData;
