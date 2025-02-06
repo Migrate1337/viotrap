@@ -16,6 +16,7 @@ import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -72,8 +73,8 @@ public class PlateItemListener implements Listener {
             Location location = player.getLocation();
             String worldName = location.getWorld().getName();
             savePlateToConfig(player, location);
-            if (isInBannedRegion(location, worldName)) {
-                player.sendMessage("§cВы не можете установить пласт в этом регионе!");
+            if (isInBannedRegion(location, location.getWorld().getName()) || hasBannedRegionFlags(location, location.getWorld().getName())) {
+                player.sendMessage("§cВы не можете установить трапку в этом месте!");
                 return;
             }
 
@@ -154,6 +155,38 @@ public class PlateItemListener implements Listener {
         return regionManager.getApplicableRegions(vector).getRegions()
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));
+    }
+    private boolean hasBannedRegionFlags(Location location, String worldName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
+
+        if (regionManager == null) {
+            return false;
+        }
+
+        ConfigurationSection bannedFlagsSection = plugin.getConfig().getConfigurationSection("plate.banned_region_flags");
+        if (bannedFlagsSection == null) {
+            return false;
+        }
+
+        BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        Set<ProtectedRegion> regions = regionManager.getApplicableRegions(vector).getRegions();
+
+
+        for (ProtectedRegion region : regions) {
+
+            for (String flagName : bannedFlagsSection.getKeys(false)) {
+                StateFlag flag = (StateFlag) Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
+                if (flag == null) {
+                    continue;
+                }
+
+                if (region.getFlag(flag) != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
     public void removeAllPlates() {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();

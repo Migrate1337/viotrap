@@ -65,6 +65,8 @@ public class GiveItemCommand implements CommandExecutor {
                 return DisorientItem.getDisorientItem(amount);
             case "божья_аура":
                 return DivineAuraItem.getDivineAuraItem(amount, VioTrap.getPlugin());
+            case "огненный_смерч":
+                return FirestormItem.getFirestormItem(amount, VioTrap.getPlugin());
             default:
                 return null;
         }

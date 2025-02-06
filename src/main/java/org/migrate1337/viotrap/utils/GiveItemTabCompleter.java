@@ -31,6 +31,7 @@ public class GiveItemTabCompleter implements TabCompleter {
             suggestions.add("Явная_пыль");
             suggestions.add("Дезориентация");
             suggestions.add("Божья_аура");
+            suggestions.add("Огненный_смерч");
         } else if (args.length == 4 && args[2].equalsIgnoreCase("Трапка")) {
             List<String> availableSkins = VioTrap.getPlugin().getSkinNames();
             suggestions.addAll(availableSkins);

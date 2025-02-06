@@ -16,6 +16,7 @@ import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -44,10 +45,7 @@ import org.migrate1337.viotrap.utils.PVPManagerHandle;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class TrapItemListener implements Listener {
     private final VioTrap plugin;
@@ -88,8 +86,8 @@ public class TrapItemListener implements Listener {
             return;
         }
 
-        if (isInBannedRegion(location, location.getWorld().getName())) {
-            player.sendMessage("§cВы не можете установить трапку в этом регионе!");
+        if (isInBannedRegion(location, location.getWorld().getName()) || hasBannedRegionFlags(location, location.getWorld().getName())) {
+            player.sendMessage("§cВы не можете установить трапку в этом месте!");
             return;
         }
 
@@ -169,7 +167,7 @@ public class TrapItemListener implements Listener {
         plugin.getTrapsConfig().set(path + ".x", location.getBlockX());
         plugin.getTrapsConfig().set(path + ".y", location.getBlockY());
         plugin.getTrapsConfig().set(path + ".z", location.getBlockZ());
-        plugin.saveTrapsConfig(); // Теперь сохраняем в `traps.yml`
+        plugin.saveTrapsConfig();
     }
 
 
@@ -198,11 +196,44 @@ public class TrapItemListener implements Listener {
         }
 
         java.util.List<String> bannedRegions = plugin.getConfig().getStringList("trap.banned_regions");
-
         BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+
         return regionManager.getApplicableRegions(vector).getRegions()
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));
+    }
+
+    private boolean hasBannedRegionFlags(Location location, String worldName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
+
+        if (regionManager == null) {
+            return false;
+        }
+
+        ConfigurationSection bannedFlagsSection = plugin.getConfig().getConfigurationSection("trap.banned_region_flags");
+        if (bannedFlagsSection == null) {
+            return false;
+        }
+
+        BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        Set<ProtectedRegion> regions = regionManager.getApplicableRegions(vector).getRegions();
+
+
+        for (ProtectedRegion region : regions) {
+
+            for (String flagName : bannedFlagsSection.getKeys(false)) {
+                StateFlag flag = (StateFlag) Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
+                if (flag == null) {
+                    continue;
+                }
+
+                if (region.getFlag(flag) != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean isRegionNearby(Location location, String worldName) {

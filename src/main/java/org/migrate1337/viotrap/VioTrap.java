@@ -123,6 +123,7 @@ public final class VioTrap extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new DivineAuraItemListener(this), this);
         getServer().getPluginManager().registerEvents(new SkinCreationMenu(this), this);
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
+        getServer().getPluginManager().registerEvents(new FirestormItemListener(this), this);
         getCommand("createskin").setExecutor(new CreateSkinCommand(this));
         getCommand("applyskin").setExecutor(new ApplySkinCommand(this));
 
@@ -518,4 +519,40 @@ public final class VioTrap extends JavaPlugin {
     public TrapItemListener getTrapItemListener() {
         return trapItemListener;
     }
+    public int getFirestormItemCooldown() {
+        return getConfig().getInt("firestorm_item.cooldown", 10);
+    }
+
+    public int getFirestormItemRadius() {
+        return getConfig().getInt("firestorm_item.radius", 5);
+    }
+
+    public int getFirestormItemFireDuration() {
+        return getConfig().getInt("firestorm_item.fire_duration", 5);
+    }
+
+    public String getFirestormItemSoundType() {
+        return getConfig().getString("firestorm_item.sound.type", "ENTITY_BLAZE_SHOOT");
+    }
+
+    public float getFirestormItemSoundVolume() {
+        return (float) getConfig().getDouble("firestorm_item.sound.volume", 1.0f);
+    }
+
+    public float getFirestormItemSoundPitch() {
+        return (float) getConfig().getDouble("firestorm_item.sound.pitch", 1.0f);
+    }
+
+    public String getFirestormItemName() {
+        return getConfig().getString("firestorm_item.name", "§cОгненный смерч");
+    }
+
+    public String getFirestormItemType() {
+        return getConfig().getString("firestorm_item.type", "BLAZE_ROD");
+    }
+
+    public List<String> getFirestormItemDescription() {
+        return getConfig().getStringList("firestorm_item.description");
+    }
+
 }

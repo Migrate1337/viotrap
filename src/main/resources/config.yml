@@ -24,6 +24,7 @@ trap:
   flags:
     PVP: allow
     BUILD: deny
+  banned_region_flags:
 plate:
   enable-pvp: false #Включать ли пвп при использовании пласта
   display_name: "§6Пласт"
@@ -54,6 +55,7 @@ plate:
     - spawn
     - new
     - private
+  banned_region_flags:
   flags:
     PVP: allow
     BUILD: deny
@@ -76,6 +78,7 @@ reveal_item:
     - spawn
     - new
     - private
+  banned_region_flags:
 disorient_item:
   display_name: "§dДезориентация"
   type: "ENDER_EYE"
@@ -103,6 +106,7 @@ disorient_item:
     - spawn
     - new
     - private
+  banned_region_flags:
 divine_aura:
   name: "Божья Аура"
   material: "GHAST_TEAR"
@@ -136,4 +140,20 @@ divine_aura:
     - spawn
     - new
     - private
+  banned_region_flags:
+firestorm_item:
+  type: FIRE_CHARGE
+  name: "§cОгненный смерч"
+  description:
+    - "§eИспользуй, чтобы поджечь врагов вокруг!"
+  cooldown: 15
+  radius: 5
+  fire_duration: 5
+  sound:
+    type: ENTITY_BLAZE_SHOOT
+    volume: 1.0
+    pitch: 1.5
+  banned_regions:
+    - no-fire
+    - spawn
 skins:
