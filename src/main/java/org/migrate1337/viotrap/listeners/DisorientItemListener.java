@@ -60,7 +60,7 @@ public class DisorientItemListener implements Listener {
         String worldName = location.getWorld().getName();
 
         if (isInBannedRegion(location, location.getWorld().getName()) || hasBannedRegionFlags(location, location.getWorld().getName())) {
-            player.sendMessage("§cВы не можете установить трапку в этом месте!");
+            player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             return;
         }
 
@@ -130,14 +130,18 @@ public class DisorientItemListener implements Listener {
     private boolean isInBannedRegion(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
+        if (plugin.getConfig().getBoolean("disorient_item.disabled_all_regions", false)) {
+            return regionManager != null && regionManager.getApplicableRegions(BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ()))
+                    .getRegions().stream().anyMatch(region -> !"__default__".equals(region.getId()));
+        }
 
         if (regionManager == null) {
             return false;
         }
 
-        List<String> bannedRegions = plugin.getConfig().getStringList("disorient_item.banned_regions");
+        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("disorient_item.banned_regions");
+        BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 
-        com.sk89q.worldedit.math.BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
         return regionManager.getApplicableRegions(vector).getRegions()
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));

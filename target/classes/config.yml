@@ -25,6 +25,7 @@ trap:
     PVP: allow
     BUILD: deny
   banned_region_flags:
+  disabled_all_regions: true
 plate:
   enable-pvp: false #Включать ли пвп при использовании пласта
   display_name: "§6Пласт"
@@ -107,6 +108,7 @@ disorient_item:
     - new
     - private
   banned_region_flags:
+    TNT: ALLOW
 divine_aura:
   name: "Божья Аура"
   material: "GHAST_TEAR"

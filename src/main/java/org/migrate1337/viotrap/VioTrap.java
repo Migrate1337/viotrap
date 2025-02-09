@@ -136,7 +136,7 @@ public final class VioTrap extends JavaPlugin {
     public void onDisable() {
         if (trapItemListener != null) {
             Bukkit.getLogger().info("[VioTrap] Выключение сервера, восстанавливаем блоки...");
-            trapItemListener.removeAllTraps();
+//            trapItemListener.removeAllTraps();
         } else {
             Bukkit.getLogger().warning("[VioTrap] trapItemListener == null, restoreAllBlocks() не вызван!");
         }
@@ -265,8 +265,16 @@ public final class VioTrap extends JavaPlugin {
         divineAuraSoundVolume = (float) config.getDouble("divine_aura.sound.volume", 1.0);
         divineAuraSoundPitch = (float) config.getDouble("divine_aura.sound.pitch", 1.0);
     }
-
-
+    public void loadDisorientItemConfig() {
+        divineAuraItemName = config.getString("divine_aura.name", "Божья Аура");
+        divineAuraItemMaterial = Material.getMaterial(config.getString("divine_aura.material", "GHAST_TEAR"));
+        divineAuraItemDescription = config.getStringList("divine_aura.description");
+        divineAuraItemCooldown = config.getInt("divine_aura.cooldown", 10);
+        divineAuraParticleType = config.getString("divine_aura.particle_type", "VILLAGER_HAPPY");
+        divineAuraSoundType = config.getString("divine_aura.sound.type", "ENTITY_PLAYER_LEVELUP");
+        divineAuraSoundVolume = (float) config.getDouble("divine_aura.sound.volume", 1.0);
+        divineAuraSoundPitch = (float) config.getDouble("divine_aura.sound.pitch", 1.0);
+    }
     public static VioTrap getPlugin() {
         return plugin;
     }
@@ -426,31 +434,31 @@ public final class VioTrap extends JavaPlugin {
 
     public int getRevealItemGlowDuration() { return revealItemGlowDuration;}
     public int getDisorientItemCooldown() {
-        return getConfig().getInt("disorient_item.cooldown", 10);
+        return config.getInt("disorient_item.cooldown", 10);
     }
 
     public int getDisorientItemEffectDuration() {
-        return getConfig().getInt("disorient_item.effect_duration", 5);
+        return config.getInt("disorient_item.effect_duration", 5);
     }
 
     public int getDisorientItemRadius() {
-        return getConfig().getInt("disorient_item.radius", 10);
+        return config.getInt("disorient_item.radius", 10);
     }
 
     public String getDisorientItemSoundType() {
-        return getConfig().getString("disorient_item.sound.type", "ENTITY_WITHER_AMBIENT");
+        return config.getString("disorient_item.sound.type", "ENTITY_WITHER_AMBIENT");
     }
 
     public float getDisorientItemSoundVolume() {
-        return (float) getConfig().getDouble("disorient_item.sound.volume", 1.0f);
+        return (float) config.getDouble("disorient_item.sound.volume", 1.0f);
     }
 
     public float getDisorientItemSoundPitch() {
-        return (float) getConfig().getDouble("disorient_item.sound.pitch", 1.0f);
+        return (float) config.getDouble("disorient_item.sound.pitch", 1.0f);
     }
 
     public String getDisorientItemParticleType() {
-        return getConfig().getString("disorient_item.particle_type", "SMOKE_LARGE");
+        return config.getString("disorient_item.particle_type", "SMOKE_LARGE");
     }
     public String getDisorientItemName() {
         return config.getString("disorient_item.display_name", "Дезориентация");

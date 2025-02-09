@@ -23,10 +23,10 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
+import org.bukkit.block.CreatureSpawner;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -34,10 +34,8 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.util.Vector;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.utils.CombatLogXHandler;
@@ -87,10 +85,9 @@ public class TrapItemListener implements Listener {
         }
 
         if (isInBannedRegion(location, location.getWorld().getName()) || hasBannedRegionFlags(location, location.getWorld().getName())) {
-            player.sendMessage("§cВы не можете установить трапку в этом месте!");
+            player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             return;
         }
-
         if (isRegionNearby(location, location.getWorld().getName())) {
             player.sendMessage(plugin.getTrapMessageNearby());
             return;
@@ -142,7 +139,10 @@ public class TrapItemListener implements Listener {
                     Operations.complete(copy);
 
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        restoreBlocks(player.getUniqueId());
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            restoreBlocks(player.getUniqueId());
+                        }, 2L);
+
                         removeTrapRegion(player.getName() + "_trap", location);
                         removeTrapFromFile(location);
                     }, plugin.getTrapDuration() * 20);
@@ -190,6 +190,10 @@ public class TrapItemListener implements Listener {
     private boolean isInBannedRegion(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
+        if (plugin.getConfig().getBoolean("trap.disabled_all_regions", false)) {
+            return regionManager != null && regionManager.getApplicableRegions(BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ()))
+                    .getRegions().stream().anyMatch(region -> !"__default__".equals(region.getId()));
+        }
 
         if (regionManager == null) {
             return false;
@@ -256,13 +260,23 @@ public class TrapItemListener implements Listener {
         Map<Location, BlockData> replacedBlocks = new HashMap<>();
         BlockVector3 min = clipboard.getRegion().getMinimumPoint();
         BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+
         int sizeX = max.getBlockX() - min.getBlockX() + 1;
         int sizeY = max.getBlockY() - min.getBlockY() + 1;
         int sizeZ = max.getBlockZ() - min.getBlockZ() + 1;
 
         int offsetX = -(sizeX / 2);
-        int offsetY = -(sizeY / 2);
+        int offsetY = -(sizeY / 2) + 1;
         int offsetZ = -(sizeZ / 2);
+
+        // Коррекция оффсетов для разных размеров
+        if (sizeX == 5 && sizeY == 5 && sizeZ == 5) {
+            offsetY = -(sizeY / 2) + 1;
+        } else if (sizeX == 7 && sizeY == 7 && sizeZ == 7) {
+            offsetY = -(sizeY / 2) + 2;
+        } else if (sizeX == 9 && sizeY == 9 && sizeZ == 9) {
+            offsetY = -(sizeY / 2) + 2;
+        }
 
         for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
             for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
@@ -273,11 +287,23 @@ public class TrapItemListener implements Listener {
                             z - min.getBlockZ() + offsetZ
                     );
                     Block block = blockLocation.getBlock();
-                    BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null);
-                    if (block.getState() instanceof Container) {
-                        Container container = (Container) block.getState();
+                    BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null, null);
+
+                    // Сохранение содержимого сундуков
+                    if (block.getState() instanceof Container container) {
                         blockData.setContents(container.getInventory().getContents());
                     }
+
+                    // Сохранение типа моба в спавнере
+                    if (block.getState() instanceof CreatureSpawner spawner) {
+                        try {
+                            EntityType spawnedType = spawner.getSpawnedType();
+                            blockData.setSpawnedType(spawnedType != null ? spawnedType.name() : "UNKNOWN");
+                        } catch (Exception e) {
+                            Bukkit.getLogger().warning("[VioTrap] Ошибка при сохранении моба из спавнера: " + e.getMessage());
+                        }
+                    }
+
                     replacedBlocks.put(blockLocation, blockData);
                 }
             }
@@ -285,6 +311,7 @@ public class TrapItemListener implements Listener {
 
         playerReplacedBlocks.put(playerId, replacedBlocks);
     }
+
 
     public void restoreAllBlocks() {
         Bukkit.getLogger().info("[VioTrap] Вызван restoreAllBlocks()!");
@@ -304,6 +331,7 @@ public class TrapItemListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
+        restoreBlocks(playerId);
         if (playerReplacedBlocks.containsKey(playerId)) {
             playerReplacedBlocks.remove(playerId);
         }
@@ -319,13 +347,20 @@ public class TrapItemListener implements Listener {
                 block.setType(blockData.getMaterial());
                 block.setBlockData(blockData.getBlockData());
 
-                if (block.getState() instanceof Container) {
-                    Container container = (Container) block.getState();
+                // Восстановление содержимого сундуков
+                if (block.getState() instanceof Container container) {
                     container.getInventory().setContents(blockData.getContents());
                 }
 
-                removeTrapFromFile(location);
+                // Восстановление моба в спавнере
+                if (block.getState() instanceof CreatureSpawner spawner) {
+                    if (blockData.getSpawnedType() != null && !blockData.getSpawnedType().equals("UNKNOWN")) {
+                        spawner.setSpawnedType(EntityType.valueOf(blockData.getSpawnedType()));
+                        spawner.update(); // Принудительно обновляем спавнер
+                    }
+                }
             }
+
             playerReplacedBlocks.remove(playerId);
         }
     }
@@ -354,7 +389,7 @@ public class TrapItemListener implements Listener {
                 playerReplacedBlocks.putIfAbsent(playerId, new HashMap<>());
 
                 Block block = location.getBlock();
-                BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null);
+                BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null, null);
                 playerReplacedBlocks.get(playerId).put(location, blockData);
             }
         }
@@ -366,13 +401,21 @@ public class TrapItemListener implements Listener {
     public void createTrapRegion(Player player, Location location, double sizeX, double sizeY, double sizeZ) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
-
+        BlockVector3 min = BlockVector3.at(location.getBlockX() - (sizeX / 2), location.getBlockY() - (sizeY / 2) + 2, location.getBlockZ() - (sizeZ / 2));
+        BlockVector3 max = BlockVector3.at(location.getBlockX() + (sizeX / 2), location.getBlockY() + (sizeY / 2) + 1, location.getBlockZ() + (sizeZ / 2));
         if (regionManager == null) {
             return;
         }
-
-        BlockVector3 min = BlockVector3.at(location.getBlockX() - (sizeX / 2), location.getBlockY() - (sizeY / 2), location.getBlockZ() - (sizeZ / 2));
-        BlockVector3 max = BlockVector3.at(location.getBlockX() + (sizeX / 2), location.getBlockY() + (sizeY / 2), location.getBlockZ() + (sizeZ / 2));
+        if(sizeX == 5 && sizeY == 5 && sizeZ == 5) {
+            min = BlockVector3.at(location.getBlockX() - (sizeX / 2), location.getBlockY() - (sizeY / 2) + 2, location.getBlockZ() - (sizeZ / 2));
+            max = BlockVector3.at(location.getBlockX() + (sizeX / 2), location.getBlockY() + (sizeY / 2) + 1, location.getBlockZ() + (sizeZ / 2));
+        } else if (sizeX == 7 && sizeY == 7 && sizeZ == 7) {
+            min = BlockVector3.at(location.getBlockX() - (sizeX / 2), location.getBlockY() - (sizeY / 2) + 3, location.getBlockZ() - (sizeZ / 2));
+            max = BlockVector3.at(location.getBlockX() + (sizeX / 2), location.getBlockY() + (sizeY / 2) + 2, location.getBlockZ() + (sizeZ / 2));
+        } else if (sizeX == 9 && sizeY == 9 && sizeZ == 9) {
+            min = BlockVector3.at(location.getBlockX() - (sizeX / 2), location.getBlockY() - (sizeY / 2) + 4, location.getBlockZ() - (sizeZ / 2));
+            max = BlockVector3.at(location.getBlockX() + (sizeX / 2), location.getBlockY() + (sizeY / 2) + 3, location.getBlockZ() + (sizeZ / 2));
+        }
         ProtectedCuboidRegion region = new ProtectedCuboidRegion(player.getName() + "_trap", min, max);
 
         ConfigurationSection flagsSection = plugin.getConfig().getConfigurationSection("trap.flags");
@@ -425,11 +468,13 @@ public class TrapItemListener implements Listener {
         private Material material;
         private org.bukkit.block.data.BlockData blockData;
         private ItemStack[] contents;
+        private String spawnedType; // Добавляем переменную для хранения типа моба
 
-        public BlockData(Material material, org.bukkit.block.data.BlockData blockData, ItemStack[] contents) {
+        public BlockData(Material material, org.bukkit.block.data.BlockData blockData, ItemStack[] contents, String spawnedType) {
             this.material = material;
             this.blockData = blockData;
             this.contents = contents;
+            this.spawnedType = spawnedType;
         }
 
         public Material getMaterial() {
@@ -447,5 +492,14 @@ public class TrapItemListener implements Listener {
         public void setContents(ItemStack[] contents) {
             this.contents = contents;
         }
+
+        public String getSpawnedType() {
+            return spawnedType;
+        }
+
+        public void setSpawnedType(String spawnedType) {
+            this.spawnedType = spawnedType;
+        }
     }
+
 }

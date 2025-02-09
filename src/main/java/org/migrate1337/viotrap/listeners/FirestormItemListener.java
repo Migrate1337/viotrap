@@ -5,9 +5,13 @@ import com.github.sirblobman.combatlogx.api.object.TagType;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.*;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,6 +23,7 @@ import org.migrate1337.viotrap.utils.PVPManagerHandle;
 import org.migrate1337.viotrap.items.FirestormItem;
 
 import java.util.List;
+import java.util.Set;
 
 public class FirestormItemListener implements Listener {
     private final VioTrap plugin;
@@ -47,7 +52,7 @@ public class FirestormItemListener implements Listener {
         Location location = player.getLocation();
         String worldName = location.getWorld().getName();
 
-        if (isInBannedRegion(location, worldName)) {
+        if (isInBannedRegion(location, location.getWorld().getName()) || hasBannedRegionFlags(location, location.getWorld().getName())) {
             player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             return;
         }
@@ -105,19 +110,54 @@ public class FirestormItemListener implements Listener {
     private boolean isInBannedRegion(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
+        if (plugin.getConfig().getBoolean("firestorm_item.disabled_all_regions", false)) {
+            return regionManager != null && regionManager.getApplicableRegions(BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ()))
+                    .getRegions().stream().anyMatch(region -> !"__default__".equals(region.getId()));
+        }
 
         if (regionManager == null) {
             return false;
         }
 
-        List<String> bannedRegions = plugin.getConfig().getStringList("firestorm_item.banned_regions");
-
+        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("firestorm_item.banned_regions");
         BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+
         return regionManager.getApplicableRegions(vector).getRegions()
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));
     }
+    private boolean hasBannedRegionFlags(Location location, String worldName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
 
+        if (regionManager == null) {
+            return false;
+        }
+
+        ConfigurationSection bannedFlagsSection = plugin.getConfig().getConfigurationSection("firestorm_item.banned_region_flags");
+        if (bannedFlagsSection == null) {
+            return false;
+        }
+
+        BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        Set<ProtectedRegion> regions = regionManager.getApplicableRegions(vector).getRegions();
+
+
+        for (ProtectedRegion region : regions) {
+
+            for (String flagName : bannedFlagsSection.getKeys(false)) {
+                StateFlag flag = (StateFlag) Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
+                if (flag == null) {
+                    continue;
+                }
+
+                if (region.getFlag(flag) != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     private void showParticleCircle(Location center, double radius, Particle particle) {
         int points = 100;
         double increment = (2 * Math.PI) / points;
