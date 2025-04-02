@@ -44,8 +44,8 @@ public class RevealItemListener implements Listener {
     public void onPlayerUseRevealItem(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
-
         if (item == null || !item.isSimilar(RevealItem.getRevealItem(item.getAmount()))) return;
+        player.sendMessage(plugin.getConfig().getString("reveal_item.messages.success_used"));
         if (!event.getAction().toString().contains("RIGHT_CLICK")) return;
         if (player.hasCooldown(item.getType())) {
             player.sendMessage("§cПодождите перед использованием снова!");

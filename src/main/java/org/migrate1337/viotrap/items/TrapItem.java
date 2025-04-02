@@ -8,6 +8,7 @@ import org.bukkit.NamespacedKey;
 import org.migrate1337.viotrap.VioTrap;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class TrapItem {
@@ -27,10 +28,10 @@ public class TrapItem {
 
             if (skin != null) {
                 meta.getPersistentDataContainer().set(SKIN_KEY, PersistentDataType.STRING, skin);
-
-                String desc = VioTrap.getPlugin().getSkinDescription(skin);
+                meta.setDisplayName(VioTrap.getPlugin().getSkinDisplayName(skin));
+                List<String> desc = VioTrap.getPlugin().getSkinDescription(skin);
                 if (desc != null) {
-                    meta.setLore(java.util.Collections.singletonList(desc));
+                    meta.setLore(desc);
                 }
             }
 

@@ -51,7 +51,7 @@ public class FirestormItemListener implements Listener {
 
         Location location = player.getLocation();
         String worldName = location.getWorld().getName();
-
+        player.sendMessage(plugin.getConfig().getString("firestorm_item.messages.success_used"));
         if (isInBannedRegion(location, location.getWorld().getName()) || hasBannedRegionFlags(location, location.getWorld().getName())) {
             player.sendMessage("§cВы не можете использовать данный предмет в этом регионе!");
             return;

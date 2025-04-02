@@ -124,12 +124,14 @@ public class PlateItemListener implements Listener {
                     );
                     saveReplacedBlocks(player.getUniqueId(), location, clipboard, directionInfo.angX, directionInfo.angY, directionInfo.angZ);
                     createPlateRegion(player, location, directionInfo.pos1X, directionInfo.pos1Y, directionInfo.pos1Z, directionInfo.pos2X, directionInfo.pos2Y, directionInfo.pos2Z);
-
+                    player.sendMessage(plugin.getConfig().getString("plate.messages.success_used"));
                     int durationTicks = plugin.getPlateDuration() * 20;
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         restoreBlocks(player.getUniqueId());
                         removePlateRegion(player, location);
                         removePlateFromFile(location);
+                        String soundEnded = plugin.getPlateSoundTypeEnded();
+                        player.playSound(location, Sound.valueOf(soundEnded), plugin.getPlateSoundVolumeEnded(), plugin.getPlateSoundPitchEnded());
                     }, durationTicks);
                 }
 

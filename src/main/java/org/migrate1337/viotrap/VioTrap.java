@@ -25,6 +25,7 @@ public final class VioTrap extends JavaPlugin {
     private static FileConfiguration config;
 
     private String trapDisplayName;
+    private String skinDisplayName;
     private List<String> trapDescription;
     private String trapType;
     private int trapCooldown;
@@ -48,8 +49,9 @@ public final class VioTrap extends JavaPlugin {
     private String plateSoundType;
     private float plateSoundVolume;
     private float plateSoundPitch;
-
-    // Добавленные переменные для разных направлений схем
+    private String plateSoundTypeEnded;
+    private float plateSoundVolumeEnded;
+    private float plateSoundPitchEnded;
     private String plateForwardSchematic;
     private String plateForwardLeftSchematic;
     private String plateForwardRightSchematic;
@@ -136,7 +138,7 @@ public final class VioTrap extends JavaPlugin {
     public void onDisable() {
         if (trapItemListener != null) {
             Bukkit.getLogger().info("[VioTrap] Выключение сервера, восстанавливаем блоки...");
-//            trapItemListener.removeAllTraps();
+            trapItemListener.removeAllTraps();
         } else {
             Bukkit.getLogger().warning("[VioTrap] trapItemListener == null, restoreAllBlocks() не вызван!");
         }
@@ -231,6 +233,9 @@ public final class VioTrap extends JavaPlugin {
         plateSoundType = config.getString("plate.sound.type", "BLOCK_ANVIL_PLACE");
         plateSoundVolume = (float) config.getDouble("plate.sound.volume", 10.0);
         plateSoundPitch = (float) config.getDouble("plate.sound.pitch", 1.0);
+        plateSoundTypeEnded = config.getString("plate.sound.type-ended", "BLOCK_ANVIL_PLACE");
+        plateSoundVolumeEnded = (float) config.getDouble("plate.sound.volume-ended", 10.0);
+        plateSoundPitchEnded = (float) config.getDouble("plate.sound.pitch-ended", 1.0);
         plateForwardSchematic = config.getString("plate.forward_schematic", "plate_forward.schem");
         plateForwardLeftSchematic = config.getString("plate.forward_left_schematic", "plate_forward_left.schem");
         plateForwardRightSchematic = config.getString("plate.forward_right_schematic", "plate_forward_right.schem");
@@ -245,7 +250,7 @@ public final class VioTrap extends JavaPlugin {
     public void loadRevealItemConfig() {
         revealItemType = config.getString("reveal_item.type");
         revealItemDisplayName = config.getString("reveal_item.display_name");
-        revealItemDescription = config.getStringList("disorient_item.description");
+        revealItemDescription = config.getStringList("reveal_item.description");
         revealItemCooldown = config.getInt("reveal_item.cooldown");
         revealItemRadius = config.getInt("reveal_item.radius");
         revealItemSoundType = config.getString("reveal_item.sound.type", "ENTITY_EXPERIENCE_ORB_PICKUP");
@@ -359,6 +364,15 @@ public final class VioTrap extends JavaPlugin {
 
     public float getPlateSoundPitch() {
         return plateSoundPitch;
+    }
+    public String getPlateSoundTypeEnded() {
+        return plateSoundTypeEnded;
+    }
+
+    public float getPlateSoundVolumeEnded() { return plateSoundVolumeEnded; }
+
+    public float getPlateSoundPitchEnded() {
+        return plateSoundPitchEnded;
     }
     public String getPlateForwardSchematic() {
         return plateForwardSchematic;
@@ -514,8 +528,11 @@ public final class VioTrap extends JavaPlugin {
         return config.getString("skins." + skinName + ".schem", getTrapSchematic());
     }
 
-    public String getSkinDescription(String skinName) {
-        return config.getString("skins." + skinName + ".desc_for_trap", "Описание не найдено.");
+    public List<String> getSkinDescription(String skinName) {
+        return config.getStringList("skins." + skinName + ".desc_for_trap");
+    }
+    public String getSkinDisplayName(String skinName) {
+        return config.getString("skins." + skinName + ".name");
     }
     public List<String> getSkinNames() {
         ConfigurationSection skinsSection = config.getConfigurationSection("skins");

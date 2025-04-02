@@ -59,7 +59,7 @@ public class DivineAuraItemListener implements Listener {
             return;
         }
         item.setAmount(item.getAmount() - 1);
-
+        player.sendMessage(plugin.getConfig().getString("divine_aura.messages.success_used"));
         int cooldownSeconds = plugin.getDivineAuraItemCooldown();
         player.setCooldown(item.getType(), cooldownSeconds * 20);
 

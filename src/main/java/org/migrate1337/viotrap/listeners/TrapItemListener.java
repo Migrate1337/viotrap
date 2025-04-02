@@ -8,9 +8,9 @@ import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
-import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
@@ -32,6 +32,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -51,10 +52,13 @@ public class TrapItemListener implements Listener {
     private final Map<String, ProtectedCuboidRegion> activeTraps = new HashMap<>();
     private final CombatLogXHandler combatLogXHandler;
     private final PVPManagerHandle pvpManagerHandler;
+    private final Set<UUID> playersInTrapRegions = new HashSet<>();
+
     public TrapItemListener(VioTrap plugin) {
         this.combatLogXHandler = new CombatLogXHandler();
         this.pvpManagerHandler = new PVPManagerHandle();
         this.plugin = plugin;
+
     }
 
     @EventHandler
@@ -107,9 +111,8 @@ public class TrapItemListener implements Listener {
         float soundVolume = (float) plugin.getConfig().getDouble("skins." + skin + ".sound.volume", plugin.getTrapSoundVolume());
         float soundPitch = (float) plugin.getConfig().getDouble("skins." + skin + ".sound.pitch", plugin.getTrapSoundPitch());
 
-        player.setCooldown(item.getType(), plugin.getTrapCooldown() * 20);
         player.playSound(location, Sound.valueOf(soundType), soundVolume, soundPitch);
-
+        player.setCooldown(item.getType(), plugin.getTrapCooldown() * 20);
         try {
             File schematicFile = new File("plugins/WorldEdit/schematics/" + schematic);
             try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
@@ -122,21 +125,31 @@ public class TrapItemListener implements Listener {
                 double sizeZ = max.getBlockZ() - min.getBlockZ() + 1;
 
                 applyEffects(player, "skins." + skin + ".effects.player");
-
+                player.sendMessage(plugin.getConfig().getString("trap.messages.success_used"));
                 location.getWorld().getNearbyEntities(location, sizeX - 3, sizeY, sizeZ - 3, entity -> entity instanceof Player && !entity.equals(player))
                         .forEach(entity -> {
                             if (entity instanceof Player opponent) {
                                 applyEffects(opponent, "skins." + skin + ".effects.opponents");
+
+                                enablePvpForPlayer(opponent);
+
                             }
                         });
-
                 createTrapRegion(player, location, sizeX, sizeY, sizeZ);
                 try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(location.getWorld()))) {
                     BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
                     saveReplacedBlocks(player.getUniqueId(), location, clipboard);
 
-                    ForwardExtentCopy copy = new ForwardExtentCopy(clipboard, clipboard.getRegion(), clipboard.getOrigin(), editSession, pastePosition);
-                    Operations.complete(copy);
+                    ClipboardHolder holder = new ClipboardHolder(clipboard);
+
+                    Operations.complete(
+                            holder
+                                    .createPaste(editSession)
+                                    .to(pastePosition)
+                                    .ignoreAirBlocks(true)
+                                    .build()
+                    );
+
 
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -145,6 +158,10 @@ public class TrapItemListener implements Listener {
 
                         removeTrapRegion(player.getName() + "_trap", location);
                         removeTrapFromFile(location);
+                        String soundTypeEnded = plugin.getConfig().getString("skins." + skin + ".sound.type-ended");
+                        float soundVolumeEnded = (float) plugin.getConfig().getDouble("skins." + skin + ".sound.volume-ended");
+                        float soundPitchEnded = (float) plugin.getConfig().getDouble("skins." + skin + ".sound.pitch-ended");
+                        player.playSound(location, Sound.valueOf(soundTypeEnded), soundVolumeEnded, soundPitchEnded);
                     }, plugin.getTrapDuration() * 20);
                 }
 
@@ -155,6 +172,62 @@ public class TrapItemListener implements Listener {
             e.printStackTrace();
         }
     }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (event.getFrom().getBlockX() == event.getTo().getBlockX() &&
+                event.getFrom().getBlockY() == event.getTo().getBlockY() &&
+                event.getFrom().getBlockZ() == event.getTo().getBlockZ()) {
+            return;
+        }
+
+        Location location = event.getTo();
+        boolean wasInTrapRegion = playersInTrapRegions.contains(player.getUniqueId());
+        boolean isNowInTrapRegion = isInAnyTrapRegion(location);
+
+        if (!wasInTrapRegion && isNowInTrapRegion) {
+            playersInTrapRegions.add(player.getUniqueId());
+            enablePvpForPlayer(player);
+            player.setAllowFlight(false);
+        }
+        else if (wasInTrapRegion && !isNowInTrapRegion) {
+            playersInTrapRegions.remove(player.getUniqueId());
+        }
+    }
+
+    private boolean isInAnyTrapRegion(Location location) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
+
+        if (regionManager == null) {
+            return false;
+        }
+
+        BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        Set<ProtectedRegion> regions = regionManager.getApplicableRegions(vector).getRegions();
+
+        for (ProtectedRegion region : regions) {
+            if (region.getId().endsWith("_trap")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void enablePvpForPlayer(Player player) {
+        if (combatLogXHandler.isCombatLogXEnabled()) {
+            combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
+            player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled", "§cВы вошли в зону ловушки! Режим PVP активирован."));
+        }
+
+        if (pvpManagerHandler.isPvPManagerEnabled()) {
+            pvpManagerHandler.tagPlayerForPvP(player);
+            player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled", "§cВы вошли в зону ловушки! Режим PVP активирован."));
+        }
+    }
+
     private void removeTrapFromFile(Location location) {
         String path = "traps." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         plugin.getTrapsConfig().set(path, null);
@@ -269,7 +342,6 @@ public class TrapItemListener implements Listener {
         int offsetY = -(sizeY / 2) + 1;
         int offsetZ = -(sizeZ / 2);
 
-        // Коррекция оффсетов для разных размеров
         if (sizeX == 5 && sizeY == 5 && sizeZ == 5) {
             offsetY = -(sizeY / 2) + 1;
         } else if (sizeX == 7 && sizeY == 7 && sizeZ == 7) {
@@ -294,7 +366,6 @@ public class TrapItemListener implements Listener {
                         blockData.setContents(container.getInventory().getContents());
                     }
 
-                    // Сохранение типа моба в спавнере
                     if (block.getState() instanceof CreatureSpawner spawner) {
                         try {
                             EntityType spawnedType = spawner.getSpawnedType();
@@ -335,6 +406,8 @@ public class TrapItemListener implements Listener {
         if (playerReplacedBlocks.containsKey(playerId)) {
             playerReplacedBlocks.remove(playerId);
         }
+        // Очищаем данные о игроке в регионе при выходе
+        playersInTrapRegions.remove(playerId);
     }
 
     private void restoreBlocks(UUID playerId) {
@@ -347,16 +420,14 @@ public class TrapItemListener implements Listener {
                 block.setType(blockData.getMaterial());
                 block.setBlockData(blockData.getBlockData());
 
-                // Восстановление содержимого сундуков
                 if (block.getState() instanceof Container container) {
                     container.getInventory().setContents(blockData.getContents());
                 }
 
-                // Восстановление моба в спавнере
                 if (block.getState() instanceof CreatureSpawner spawner) {
                     if (blockData.getSpawnedType() != null && !blockData.getSpawnedType().equals("UNKNOWN")) {
                         spawner.setSpawnedType(EntityType.valueOf(blockData.getSpawnedType()));
-                        spawner.update(); // Принудительно обновляем спавнер
+                        spawner.update();
                     }
                 }
             }
@@ -395,8 +466,6 @@ public class TrapItemListener implements Listener {
         }
         Bukkit.getLogger().info("[VioTrap] Загружено " + playerReplacedBlocks.size() + " активных ловушек.");
     }
-
-
 
     public void createTrapRegion(Player player, Location location, double sizeX, double sizeY, double sizeZ) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
@@ -463,12 +532,13 @@ public class TrapItemListener implements Listener {
         }
         restoreAllBlocks();
         activeTraps.clear();
+        playersInTrapRegions.clear();
     }
     private static class BlockData {
         private Material material;
         private org.bukkit.block.data.BlockData blockData;
         private ItemStack[] contents;
-        private String spawnedType; // Добавляем переменную для хранения типа моба
+        private String spawnedType;
 
         public BlockData(Material material, org.bukkit.block.data.BlockData blockData, ItemStack[] contents, String spawnedType) {
             this.material = material;
@@ -501,5 +571,4 @@ public class TrapItemListener implements Listener {
             this.spawnedType = spawnedType;
         }
     }
-
 }

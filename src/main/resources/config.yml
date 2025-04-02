@@ -1,31 +1,32 @@
 trap:
   enable-pvp: false #Включать ли пвп при использовании трапки
-  schematic: "trap.schem"
-  display_name: "§6Трапка"
+  schematic: "trap.schem" #Схематика трапки
+  display_name: "§6Трапка" #Название предмета
   description:
     - "§7Используйте, чтобы установить ловушку!"
     - "fsdfdsfdsfsdfds"
-  type: "NETHERITE_SCRAP"
-  cooldown: 20
-  duration: 15
+  type: "NETHERITE_SCRAP" #Тип предмета
+  cooldown: 20 #Кулдаун
+  duration: 15 #Длительность
   messages:
     already_nearby: "Рядом уже установлен активный пласт или трапка!"
     cooldown_message: "§cПодождите перед использованием снова!"
     trap_failed: "Не удалось загрузить ловушку!"
     pvp-enabled: "§cВы использовали трапку и получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
   sound:
     type: "BLOCK_ANVIL_PLACE" # https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html - Все типы звуков в игре.
     volume: 10.0f # Громкость звука.
     pitch: 1.0f # Тон звука.
-  banned_regions:
+  banned_regions: #Регионы, где будет запрещено использовать предмет
     - spawn
     - new
     - private
-  flags:
+  flags: #Флаги WorldGuard, которые будут в регоине
     PVP: allow
     BUILD: deny
-  banned_region_flags:
-  disabled_all_regions: false
+  banned_region_flags: #Забаненные флаги(В регионах, где будут данные флаги, нельзя будет использовать предмет)
+  disabled_all_regions: false #Забанить все регионы, кроме глобального
 plate:
   enable-pvp: false #Включать ли пвп при использовании пласта
   display_name: "§6Пласт"
@@ -38,6 +39,7 @@ plate:
     cooldown_message: "§cПодождите перед использованием снова!"
     placement_failed: "Не удалось загрузить пласт!"
     pvp-enabled: "§cВы использовали пласт и получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
   forward_schematic: "plate_forward.schem" # Значение yaw от -22.5 до 22.5(Значение pitch в этом случае неважно)
   forward_left_schematic: "plate_forward_left.schem" # Значение yaw от 22.5 до 67.5(Значение pitch в этом случае неважно)
   forward_right_schematic: "plate_forward_right.schem" # Значение yaw от -67.5 до -22.5(Значение pitch в этом случае неважно)
@@ -72,6 +74,7 @@ reveal_item:
   messages:
     pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
     pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
   sound:
     type: "ENTITY_EXPERIENCE_ORB_PICKUP"
     volume: 1.0f
@@ -97,6 +100,7 @@ disorient_item:
   messages:
     pvp-enabled-by-player: "§cВы использовали дезориентацию и получили режим пвп!"
     pvp-enabled-for-player: "§cВозле вас использовали дезориентацию и вы получили режим пвп!"
+    success_used: "§aВы успешно использовали предмет."
   cooldown: 10
   radius: 10
   sound:
@@ -117,6 +121,8 @@ divine_aura:
   description:
     - "Используйте, чтобы снять с себя"
     - "негативные эффекты и получить позитивные."
+  messages:
+    success_used: "§aВы успешно использовали предмет."
   cooldown: 10 # Кулдаун в секундах
   positive_effects:
     - REGENERATION:
@@ -151,6 +157,8 @@ firestorm_item:
   name: "§cОгненный смерч"
   description:
     - "§eИспользуй, чтобы поджечь врагов вокруг!"
+  messages:
+    success_used: "§aВы успешно использовали предмет."
   cooldown: 15
   radius: 5
   fire_duration: 5
@@ -163,3 +171,23 @@ firestorm_item:
     - spawn
   disabled_all_regions: false
 skins:
+  test:
+    schem: test
+    name: "Тест трапка"
+    desc_for_trap: test
+    sound:
+      type: ENTITY_WITHER_AMBIENT
+      volume: 1.0
+      pitch: 1.0
+      type-ended: ENTITY_WITHER_AMBIENT
+      volume-ended: 1.0
+      pitch-ended: 1.0
+    effects:
+      player:
+        REGENERATION:
+          amplifier: 1
+          duration: 10
+      opponents:
+        NAUSEA:
+          amplifier: 1
+          duration: 10

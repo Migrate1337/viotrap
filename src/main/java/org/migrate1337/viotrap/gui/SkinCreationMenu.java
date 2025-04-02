@@ -23,7 +23,7 @@ public class SkinCreationMenu implements Listener {
     }
 
     public void openMenu(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, 9, "Создание скина для трапки");
+        Inventory inventory = Bukkit.createInventory(null, 18, "Создание скина для трапки");
         updateItems(inventory);
         player.openInventory(inventory);
     }
@@ -39,13 +39,16 @@ public class SkinCreationMenu implements Listener {
 
     private void updateItems(Inventory inventory) {
         inventory.setItem(0, createMenuItem(Material.PAPER, "Название скина", "Текущее: " + plugin.getTempSkinData().getOrDefault("name", "Не задано")));
+        inventory.setItem(1, createMenuItem(Material.NAME_TAG, "Имя предмета", "Текущее: " + plugin.getTempSkinData().getOrDefault("display_name", "Не задано"))); // Новое поле
         inventory.setItem(2, createMenuItem(Material.CHEST, "Схематика", "Текущая: " + plugin.getTempSkinData().getOrDefault("schem", "Не задано")));
         inventory.setItem(4, createMenuItem(Material.BOOK, "Описание для трапки", "Текущее: " + plugin.getTempSkinData().getOrDefault("desc_for_trap", "Не задано")));
         inventory.setItem(5, createMenuItem(Material.NOTE_BLOCK, "Тип звука", "Текущий: " + plugin.getTempSkinData().getOrDefault("sound.type", "Не задано")));
-        inventory.setItem(6, createMenuItem(Material.SPIDER_EYE, "Эффект для противников", "Текущий: " + plugin.getTempSkinData().getOrDefault("opponent_effect", "Не задано")));
-        inventory.setItem(7, createMenuItem(Material.GOLDEN_APPLE, "Эффект для игрока", "Текущий: " + plugin.getTempSkinData().getOrDefault("player_effect", "Не задано")));
-        inventory.setItem(8, createMenuItem(Material.GREEN_WOOL, "Сохранить", "Сохранить новый скин"));
+        inventory.setItem(6, createMenuItem(Material.NOTE_BLOCK, "Тип звука (завершение)", "Текущий: " + plugin.getTempSkinData().getOrDefault("sound.type-ended", "Не задано"))); // Новое поле
+        inventory.setItem(7, createMenuItem(Material.SPIDER_EYE, "Эффект для противников", "Текущий: " + plugin.getTempSkinData().getOrDefault("opponent_effect", "Не задано")));
+        inventory.setItem(8, createMenuItem(Material.GOLDEN_APPLE, "Эффект для игрока", "Текущий: " + plugin.getTempSkinData().getOrDefault("player_effect", "Не задано")));
+        inventory.setItem(9, createMenuItem(Material.GREEN_WOOL, "Сохранить", "Сохранить новый скин"));
     }
+
 
     private ItemStack createMenuItem(Material material, String name, String lore) {
         ItemStack item = new ItemStack(material);
@@ -72,13 +75,16 @@ public class SkinCreationMenu implements Listener {
 
         switch (itemName) {
             case "Название скина" -> handleInput(player, "name", "Введите название скина в чат:");
+            case "Имя предмета" -> handleInput(player, "display_name", "Введите имя предмета (как оно будет отображаться у игрока):"); // Новое поле
             case "Схематика" -> handleInput(player, "schem", "Введите название схематики в чат:");
             case "Описание для трапки" -> handleInput(player, "desc_for_trap", "Введите описание для трапки в чат (поддерживается кодировка & и #):");
             case "Тип звука" -> handleInput(player, "sound.type", "Введите тип звука (например, ENTITY_WITHER_AMBIENT):");
+            case "Тип звука (завершение)" -> handleInput(player, "sound.type-ended", "Введите тип звука при завершении (например, ENTITY_WITHER_AMBIENT):"); // Новое поле
             case "Эффект для противников" -> handleEffectInput(player, "opponent_effect", "Введите эффект для противников (например, NAUSEA):");
             case "Эффект для игрока" -> handleEffectInput(player, "player_effect", "Введите эффект для игрока (например, REGENERATION):");
             case "Сохранить" -> saveSkin(player);
         }
+
     }
 
     private void handleInput(Player player, String key, String prompt) {
@@ -94,6 +100,9 @@ public class SkinCreationMenu implements Listener {
                 }
             }
             if (key.equals("desc_for_trap")) {
+                input = org.bukkit.ChatColor.translateAlternateColorCodes('&', input);
+            }
+            if (key.equals("display_name")) {
                 input = org.bukkit.ChatColor.translateAlternateColorCodes('&', input);
             }
 
@@ -114,30 +123,44 @@ public class SkinCreationMenu implements Listener {
     }
 
     private void saveSkin(Player player) {
-        String skinName = plugin.getTempSkinData().get("name");
+        String skinName = plugin.getTempSkinData().get("name"); // Техническое название
+        String displayName = plugin.getTempSkinData().get("display_name"); // Отображаемое имя
         String schematic = plugin.getTempSkinData().get("schem");
         String description = plugin.getTempSkinData().get("desc_for_trap");
         String sound = plugin.getTempSkinData().get("sound.type");
+        String soundEnded = plugin.getTempSkinData().getOrDefault("sound.type-ended", "ENTITY_WITHER_AMBIENT"); // По умолчанию
         String opponentEffect = plugin.getTempSkinData().get("opponent_effect");
         String playerEffect = plugin.getTempSkinData().get("player_effect");
 
-        if (skinName == null || schematic == null || description == null || sound == null) {
+        if (skinName == null || displayName == null || schematic == null || description == null || sound == null) {
             player.sendMessage("§cПожалуйста, заполните все поля!");
             return;
         }
 
+        plugin.getConfig().set("skins." + skinName + ".name", displayName); // Сохранение имени предмета
         plugin.getConfig().set("skins." + skinName + ".schem", schematic);
         plugin.getConfig().set("skins." + skinName + ".desc_for_trap", description);
+
+        // Основной звук
         plugin.getConfig().set("skins." + skinName + ".sound.type", sound);
         plugin.getConfig().set("skins." + skinName + ".sound.volume", 1.0f);
         plugin.getConfig().set("skins." + skinName + ".sound.pitch", 1.0f);
+
+        // Звук завершения
+        plugin.getConfig().set("skins." + skinName + ".sound.type-ended", soundEnded);
+        plugin.getConfig().set("skins." + skinName + ".sound.volume-ended", 1.0f);
+        plugin.getConfig().set("skins." + skinName + ".sound.pitch-ended", 1.0f);
+
+        // Эффекты
         plugin.getConfig().set("skins." + skinName + ".effects.player." + playerEffect + ".amplifier", 1);
         plugin.getConfig().set("skins." + skinName + ".effects.player." + playerEffect + ".duration", 10);
         plugin.getConfig().set("skins." + skinName + ".effects.opponents." + opponentEffect + ".amplifier", 1);
         plugin.getConfig().set("skins." + skinName + ".effects.opponents." + opponentEffect + ".duration", 10);
+
         plugin.saveConfig();
 
         player.sendMessage("§aСкин '" + skinName + "' успешно сохранён!");
         player.closeInventory();
     }
+
 }

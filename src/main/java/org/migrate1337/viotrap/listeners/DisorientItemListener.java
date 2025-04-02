@@ -68,7 +68,7 @@ public class DisorientItemListener implements Listener {
         Location playerLocation = player.getLocation();
 
         boolean foundOpponent = false;
-
+        player.sendMessage(plugin.getConfig().getString("disorient_item.messages.success_used"));
         for (Player nearbyPlayer : Bukkit.getOnlinePlayers()) {
             if (nearbyPlayer.equals(player)) continue;
 

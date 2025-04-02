@@ -73,6 +73,12 @@
             <id>CodeMC</id>
             <url>https://repo.codemc.org/repository/maven-public/</url>
         </repository>
+        <repository>
+            <id>essentialsx</id>
+            <name>EssentialsX API Repository</name>
+            <url>https://repo.essentialsx.net/</url>
+        </repository>
+
     </repositories>
 
     <dependencies>
@@ -111,6 +117,11 @@
             <artifactId>pvpmanager</artifactId>
             <version>3.18.36</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.essentialsx</groupId>
+            <artifactId>EssentialsX</artifactId>
+            <version>2.19.0</version>
         </dependency>
     </dependencies>
 </project>
