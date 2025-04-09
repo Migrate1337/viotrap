@@ -361,11 +361,25 @@ public class TrapItemListener implements Listener {
                     Block block = blockLocation.getBlock();
                     BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null, null);
 
-                    // Сохранение содержимого сундуков
+                    // Сохранение содержимого сундуков, включая двойные
                     if (block.getState() instanceof Container container) {
-                        blockData.setContents(container.getInventory().getContents());
+                        org.bukkit.block.Chest chest = (org.bukkit.block.Chest) container;
+                        if (chest.getInventory().getHolder() instanceof org.bukkit.inventory.DoubleChestInventory doubleChestInventory) {
+                            blockData.setDoubleChest(true);
+                            org.bukkit.block.Chest leftSide = (org.bukkit.block.Chest) doubleChestInventory.getLeftSide().getHolder();
+                            org.bukkit.block.Chest rightSide = (org.bukkit.block.Chest) doubleChestInventory.getRightSide().getHolder();
+
+                            // Сохраняем содержимое только для одной половины (левой), чтобы избежать дублирования
+                            if (blockLocation.equals(leftSide.getLocation())) {
+                                blockData.setContents(doubleChestInventory.getContents());
+                                blockData.setPairedChestLocation(rightSide.getLocation());
+                            }
+                        } else {
+                            blockData.setContents(container.getInventory().getContents());
+                        }
                     }
 
+                    // Сохранение спавнеров
                     if (block.getState() instanceof CreatureSpawner spawner) {
                         try {
                             EntityType spawnedType = spawner.getSpawnedType();
@@ -421,7 +435,17 @@ public class TrapItemListener implements Listener {
                 block.setBlockData(blockData.getBlockData());
 
                 if (block.getState() instanceof Container container) {
-                    container.getInventory().setContents(blockData.getContents());
+                    if (blockData.isDoubleChest() && blockData.getContents() != null) {
+                        container.getInventory().setContents(blockData.getContents());
+                        Location pairedLocation = blockData.getPairedChestLocation();
+                        if (pairedLocation != null) {
+                            Block pairedBlock = pairedLocation.getBlock();
+                            pairedBlock.setType(blockData.getMaterial());
+                            pairedBlock.setBlockData(blockData.getBlockData());
+                        }
+                    } else if (blockData.getContents() != null) {
+                        container.getInventory().setContents(blockData.getContents());
+                    }
                 }
 
                 if (block.getState() instanceof CreatureSpawner spawner) {
@@ -502,7 +526,7 @@ public class TrapItemListener implements Listener {
                 }
             }
         }
-
+        region.setPriority(52);
         regionManager.addRegion(region);
         activeTraps.put(player.getName() + "_trap", region);
     }
@@ -539,12 +563,16 @@ public class TrapItemListener implements Listener {
         private org.bukkit.block.data.BlockData blockData;
         private ItemStack[] contents;
         private String spawnedType;
+        private boolean isDoubleChest;
+        private Location pairedChestLocation;
 
         public BlockData(Material material, org.bukkit.block.data.BlockData blockData, ItemStack[] contents, String spawnedType) {
             this.material = material;
             this.blockData = blockData;
             this.contents = contents;
             this.spawnedType = spawnedType;
+            this.isDoubleChest = false;
+            this.pairedChestLocation = null;
         }
 
         public Material getMaterial() {
@@ -569,6 +597,22 @@ public class TrapItemListener implements Listener {
 
         public void setSpawnedType(String spawnedType) {
             this.spawnedType = spawnedType;
+        }
+
+        public boolean isDoubleChest() {
+            return isDoubleChest;
+        }
+
+        public void setDoubleChest(boolean isDoubleChest) {
+            this.isDoubleChest = isDoubleChest;
+        }
+
+        public Location getPairedChestLocation() {
+            return pairedChestLocation;
+        }
+
+        public void setPairedChestLocation(Location pairedChestLocation) {
+            this.pairedChestLocation = pairedChestLocation;
         }
     }
 }

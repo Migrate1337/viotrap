@@ -171,23 +171,3 @@ firestorm_item:
     - spawn
   disabled_all_regions: false
 skins:
-  test:
-    schem: test
-    name: "Тест трапка"
-    desc_for_trap: test
-    sound:
-      type: ENTITY_WITHER_AMBIENT
-      volume: 1.0
-      pitch: 1.0
-      type-ended: ENTITY_WITHER_AMBIENT
-      volume-ended: 1.0
-      pitch-ended: 1.0
-    effects:
-      player:
-        REGENERATION:
-          amplifier: 1
-          duration: 10
-      opponents:
-        NAUSEA:
-          amplifier: 1
-          duration: 10

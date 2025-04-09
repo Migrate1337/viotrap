@@ -2,9 +2,12 @@ package org.migrate1337.viotrap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.migrate1337.viotrap.commands.ApplySkinCommand;
 import org.migrate1337.viotrap.commands.CreateSkinCommand;
@@ -19,7 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-public final class VioTrap extends JavaPlugin {
+public final class VioTrap extends JavaPlugin implements Listener {
 
     private static VioTrap plugin;
     private static FileConfiguration config;
@@ -99,13 +102,14 @@ public final class VioTrap extends JavaPlugin {
     private File platesFile;
     private FileConfiguration trapsConfig;
     private FileConfiguration platesConfig;
+    private File cfile;
     @Override
     public void onEnable() {
         plugin = this;
         config = getConfig();
         getConfig().options().copyDefaults(true);
+        cfile = new File(getDataFolder(), "config.yml");
         saveDefaultConfig();
-
         loadTrapConfig();
         loadPlateConfig();
         loadRevealItemConfig();
@@ -126,6 +130,7 @@ public final class VioTrap extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SkinCreationMenu(this), this);
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new FirestormItemListener(this), this);
+        this.getServer().getPluginManager().registerEvents(this, this);
         getCommand("createskin").setExecutor(new CreateSkinCommand(this));
         getCommand("applyskin").setExecutor(new ApplySkinCommand(this));
 
@@ -579,5 +584,11 @@ public final class VioTrap extends JavaPlugin {
     public List<String> getFirestormItemDescription() {
         return getConfig().getStringList("firestorm_item.description");
     }
-
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("viotrapreload") && sender.isOp()) {
+            config = YamlConfiguration.loadConfiguration(cfile);
+            sender.sendMessage("§dКонфигурация перезагружена!");
+        }
+        return true;
+    }
 }

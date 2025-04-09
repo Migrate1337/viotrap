@@ -22,8 +22,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
+import org.bukkit.block.Container;
+import org.bukkit.block.CreatureSpawner;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -42,15 +45,17 @@ import java.util.*;
 
 public class PlateItemListener implements Listener {
     private final VioTrap plugin;
-    private final Map<UUID, Map<Location, Material>> playerReplacedBlocks = new HashMap<>();
+    private final Map<UUID, Map<Location, BlockData>> playerReplacedBlocks = new HashMap<>(); // Изменено на BlockData
     private final Map<String, ProtectedCuboidRegion> activePlates = new HashMap<>();
     private final CombatLogXHandler combatLogXHandler;
     private final PVPManagerHandle pvpManagerHandler;
+
     public PlateItemListener(VioTrap plugin) {
         this.plugin = plugin;
         this.combatLogXHandler = new CombatLogXHandler();
         this.pvpManagerHandler = new PVPManagerHandle();
     }
+
     @EventHandler
     public void onPlayerUsePlate(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -59,7 +64,7 @@ public class PlateItemListener implements Listener {
         if (item != null && PlateItem.getUniqueId(item) != null &&
                 (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
 
-            if(plugin.getConfig().getString("plate.enable-pvp") == "true"){
+            if (plugin.getConfig().getString("plate.enable-pvp") == "true") {
                 if (combatLogXHandler.isCombatLogXEnabled()) {
                     combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
                     player.sendMessage(plugin.getConfig().getString("plate.messages.pvp-enabled"));
@@ -142,7 +147,6 @@ public class PlateItemListener implements Listener {
         }
     }
 
-
     private boolean isInBannedRegion(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
@@ -155,13 +159,14 @@ public class PlateItemListener implements Listener {
             return false;
         }
 
-        java.util.List<String> bannedRegions = plugin.getConfig().getStringList("plate.banned_regions");
+        List<String> bannedRegions = plugin.getConfig().getStringList("plate.banned_regions");
         BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 
         return regionManager.getApplicableRegions(vector).getRegions()
                 .stream()
                 .anyMatch(region -> bannedRegions.contains(region.getId()));
     }
+
     private boolean hasBannedRegionFlags(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
@@ -178,9 +183,7 @@ public class PlateItemListener implements Listener {
         BlockVector3 vector = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
         Set<ProtectedRegion> regions = regionManager.getApplicableRegions(vector).getRegions();
 
-
         for (ProtectedRegion region : regions) {
-
             for (String flagName : bannedFlagsSection.getKeys(false)) {
                 StateFlag flag = (StateFlag) Flags.fuzzyMatchFlag(WorldGuard.getInstance().getFlagRegistry(), flagName);
                 if (flag == null) {
@@ -194,6 +197,7 @@ public class PlateItemListener implements Listener {
         }
         return false;
     }
+
     public void removeAllPlates() {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
 
@@ -211,13 +215,14 @@ public class PlateItemListener implements Listener {
         restoreAllBlocks();
         activePlates.clear();
     }
+
     private boolean isRegionNearby(Location location, String worldName) {
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(Bukkit.getWorld(worldName)));
 
         if (regionManager != null) {
-            com.sk89q.worldedit.math.BlockVector3 min = BlockVector3.at(location.getBlockX() - 3, location.getBlockY() - 3, location.getBlockZ() - 3);
-            com.sk89q.worldedit.math.BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
+            BlockVector3 min = BlockVector3.at(location.getBlockX() - 3, location.getBlockY() - 3, location.getBlockZ() - 3);
+            BlockVector3 max = BlockVector3.at(location.getBlockX() + 3, location.getBlockY() + 3, location.getBlockZ() + 3);
 
             ProtectedCuboidRegion checkRegion = new ProtectedCuboidRegion("checkRegion", min, max);
 
@@ -226,7 +231,6 @@ public class PlateItemListener implements Listener {
         }
         return false;
     }
-
 
     private DirectionInfo getOffsetsAndSchematic(Player player) {
         float pitch = player.getLocation().getPitch();
@@ -261,17 +265,46 @@ public class PlateItemListener implements Listener {
         }
     }
 
-
     private void saveReplacedBlocks(UUID playerId, Location startLocation, Clipboard clipboard, int angX, int angY, int angZ) {
-        Map<Location, Material> replacedBlocks = new HashMap<>();
-        com.sk89q.worldedit.math.BlockVector3 min = clipboard.getRegion().getMinimumPoint();
-        com.sk89q.worldedit.math.BlockVector3 max = clipboard.getRegion().getMaximumPoint();
+        Map<Location, BlockData> replacedBlocks = new HashMap<>();
+        BlockVector3 min = clipboard.getRegion().getMinimumPoint();
+        BlockVector3 max = clipboard.getRegion().getMaximumPoint();
 
         for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
             for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
                 for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
                     Location blockLocation = startLocation.clone().add(x - min.getBlockX() + angX, y - min.getBlockY() + angY, z - min.getBlockZ() + angZ);
-                    replacedBlocks.put(blockLocation, blockLocation.getBlock().getType());
+                    Block block = blockLocation.getBlock();
+                    BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null, null);
+
+                    // Сохранение содержимого сундуков, включая двойные
+                    if (block.getState() instanceof Container container) {
+                        org.bukkit.block.Chest chest = (org.bukkit.block.Chest) container;
+                        if (chest.getInventory().getHolder() instanceof org.bukkit.inventory.DoubleChestInventory doubleChestInventory) {
+                            blockData.setDoubleChest(true);
+                            org.bukkit.block.Chest leftSide = (org.bukkit.block.Chest) doubleChestInventory.getLeftSide().getHolder();
+                            org.bukkit.block.Chest rightSide = (org.bukkit.block.Chest) doubleChestInventory.getRightSide().getHolder();
+
+                            if (blockLocation.equals(leftSide.getLocation())) {
+                                blockData.setContents(doubleChestInventory.getContents());
+                                blockData.setPairedChestLocation(rightSide.getLocation());
+                            }
+                        } else {
+                            blockData.setContents(container.getInventory().getContents());
+                        }
+                    }
+
+                    // Сохранение спавнеров
+                    if (block.getState() instanceof CreatureSpawner spawner) {
+                        try {
+                            EntityType spawnedType = spawner.getSpawnedType();
+                            blockData.setSpawnedType(spawnedType != null ? spawnedType.name() : "UNKNOWN");
+                        } catch (Exception e) {
+                            Bukkit.getLogger().warning("[VioTrap] Ошибка при сохранении моба из спавнера: " + e.getMessage());
+                        }
+                    }
+
+                    replacedBlocks.put(blockLocation, blockData);
                 }
             }
         }
@@ -286,7 +319,7 @@ public class PlateItemListener implements Listener {
 
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
-
+        region.setPriority(52);
         if (regionManager != null) {
             regionManager.addRegion(region);
             activePlates.put(regionName, region);
@@ -319,30 +352,6 @@ public class PlateItemListener implements Listener {
         }
     }
 
-    private static class DirectionInfo {
-        final int offsetX, offsetY, offsetZ;
-        final int angX, angY, angZ;
-        final int pos1X, pos1Y, pos1Z, pos2X, pos2Y, pos2Z; // Новые параметры для pos1 и pos2
-        final String schematicName;
-
-        DirectionInfo(int offsetX, int offsetY, int offsetZ, int angX, int angY, int angZ,
-                      int pos1X, int pos1Y, int pos1Z, int pos2X, int pos2Y, int pos2Z,
-                      String schematicName) {
-            this.offsetX = offsetX;
-            this.offsetY = offsetY;
-            this.offsetZ = offsetZ;
-            this.angX = angX;
-            this.angY = angY;
-            this.angZ = angZ;
-            this.pos1X = pos1X;
-            this.pos1Y = pos1Y;
-            this.pos1Z = pos1Z;
-            this.pos2X = pos2X;
-            this.pos2Y = pos2Y;
-            this.pos2Z = pos2Z;
-            this.schematicName = schematicName;
-        }
-    }
     public void restoreAllBlocks() {
         Bukkit.getLogger().info("[VioTrap] Вызван restoreAllBlocks() для пластов!");
 
@@ -357,23 +366,53 @@ public class PlateItemListener implements Listener {
 
         Bukkit.getLogger().info("[VioTrap] Все пласты успешно восстановлены.");
     }
+
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
+        restoreBlocks(playerId); // Восстанавливаем блоки при выходе
         playerReplacedBlocks.remove(playerId);
     }
 
     private void restoreBlocks(UUID playerId) {
-        Map<Location, Material> replacedBlocks = playerReplacedBlocks.get(playerId);
+        Map<Location, BlockData> replacedBlocks = playerReplacedBlocks.get(playerId);
         if (replacedBlocks != null) {
-            for (Map.Entry<Location, Material> entry : replacedBlocks.entrySet()) {
+            for (Map.Entry<Location, BlockData> entry : replacedBlocks.entrySet()) {
                 Location location = entry.getKey();
-                location.getBlock().setType(entry.getValue());
+                BlockData blockData = entry.getValue();
+                Block block = location.getBlock();
+                block.setType(blockData.getMaterial());
+                block.setBlockData(blockData.getBlockData());
+
+                // Восстановление содержимого сундуков
+                if (block.getState() instanceof Container container) {
+                    if (blockData.isDoubleChest() && blockData.getContents() != null) {
+                        container.getInventory().setContents(blockData.getContents());
+                        Location pairedLocation = blockData.getPairedChestLocation();
+                        if (pairedLocation != null) {
+                            Block pairedBlock = pairedLocation.getBlock();
+                            pairedBlock.setType(blockData.getMaterial());
+                            pairedBlock.setBlockData(blockData.getBlockData());
+                        }
+                    } else if (blockData.getContents() != null) {
+                        container.getInventory().setContents(blockData.getContents());
+                    }
+                }
+
+                // Восстановление спавнеров
+                if (block.getState() instanceof CreatureSpawner spawner) {
+                    if (blockData.getSpawnedType() != null && !blockData.getSpawnedType().equals("UNKNOWN")) {
+                        spawner.setSpawnedType(EntityType.valueOf(blockData.getSpawnedType()));
+                        spawner.update();
+                    }
+                }
+
                 removePlateFromFile(location);
             }
             playerReplacedBlocks.remove(playerId);
         }
     }
+
     private void loadPlatesFromConfig() {
         Bukkit.getLogger().info("[VioTrap] Загружаем пласты из plats.yml...");
         if (!plugin.getPlatesConfig().contains("plates")) return;
@@ -394,13 +433,16 @@ public class PlateItemListener implements Listener {
                 int z = plateSection.getInt("z");
 
                 Location location = new Location(Bukkit.getWorld(world), x, y, z);
+                Block block = location.getBlock();
+                BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null, null);
 
                 playerReplacedBlocks.putIfAbsent(playerId, new HashMap<>());
-                playerReplacedBlocks.get(playerId).put(location, location.getBlock().getType());
+                playerReplacedBlocks.get(playerId).put(location, blockData);
             }
         }
         Bukkit.getLogger().info("[VioTrap] Загружено " + playerReplacedBlocks.size() + " активных пластов.");
     }
+
     private void savePlateToConfig(Player player, Location location) {
         String path = "plates." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         plugin.getPlatesConfig().set(path + ".player", player.getUniqueId().toString());
@@ -410,9 +452,93 @@ public class PlateItemListener implements Listener {
         plugin.getPlatesConfig().set(path + ".z", location.getBlockZ());
         plugin.savePlatesConfig();
     }
+
     private void removePlateFromFile(Location location) {
         String path = "plates." + location.getWorld().getName() + "." + location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
         plugin.getPlatesConfig().set(path, null);
         plugin.savePlatesConfig();
+    }
+
+    private static class DirectionInfo {
+        final int offsetX, offsetY, offsetZ;
+        final int angX, angY, angZ;
+        final int pos1X, pos1Y, pos1Z, pos2X, pos2Y, pos2Z;
+        final String schematicName;
+
+        DirectionInfo(int offsetX, int offsetY, int offsetZ, int angX, int angY, int angZ,
+                      int pos1X, int pos1Y, int pos1Z, int pos2X, int pos2Y, int pos2Z,
+                      String schematicName) {
+            this.offsetX = offsetX;
+            this.offsetY = offsetY;
+            this.offsetZ = offsetZ;
+            this.angX = angX;
+            this.angY = angY;
+            this.angZ = angZ;
+            this.pos1X = pos1X;
+            this.pos1Y = pos1Y;
+            this.pos1Z = pos1Z;
+            this.pos2X = pos2X;
+            this.pos2Y = pos2Y;
+            this.pos2Z = pos2Z;
+            this.schematicName = schematicName;
+        }
+    }
+
+    private static class BlockData {
+        private Material material;
+        private org.bukkit.block.data.BlockData blockData;
+        private ItemStack[] contents;
+        private String spawnedType;
+        private boolean isDoubleChest;
+        private Location pairedChestLocation;
+
+        public BlockData(Material material, org.bukkit.block.data.BlockData blockData, ItemStack[] contents, String spawnedType) {
+            this.material = material;
+            this.blockData = blockData;
+            this.contents = contents;
+            this.spawnedType = spawnedType;
+            this.isDoubleChest = false;
+            this.pairedChestLocation = null;
+        }
+
+        public Material getMaterial() {
+            return material;
+        }
+
+        public org.bukkit.block.data.BlockData getBlockData() {
+            return blockData;
+        }
+
+        public ItemStack[] getContents() {
+            return contents;
+        }
+
+        public void setContents(ItemStack[] contents) {
+            this.contents = contents;
+        }
+
+        public String getSpawnedType() {
+            return spawnedType;
+        }
+
+        public void setSpawnedType(String spawnedType) {
+            this.spawnedType = spawnedType;
+        }
+
+        public boolean isDoubleChest() {
+            return isDoubleChest;
+        }
+
+        public void setDoubleChest(boolean isDoubleChest) {
+            this.isDoubleChest = isDoubleChest;
+        }
+
+        public Location getPairedChestLocation() {
+            return pairedChestLocation;
+        }
+
+        public void setPairedChestLocation(Location pairedChestLocation) {
+            this.pairedChestLocation = pairedChestLocation;
+        }
     }
 }
