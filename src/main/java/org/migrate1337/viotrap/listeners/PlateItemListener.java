@@ -22,9 +22,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.block.Block;
-import org.bukkit.block.Container;
-import org.bukkit.block.CreatureSpawner;
+import org.bukkit.block.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -33,6 +31,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.migrate1337.viotrap.VioTrap;
 import org.migrate1337.viotrap.items.PlateItem;
@@ -273,38 +273,62 @@ public class PlateItemListener implements Listener {
         for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
             for (int y = min.getBlockY(); y <= max.getBlockY(); y++) {
                 for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
-                    Location blockLocation = startLocation.clone().add(x - min.getBlockX() + angX, y - min.getBlockY() + angY, z - min.getBlockZ() + angZ);
+                    Location blockLocation = startLocation.clone().add(
+                            x - min.getBlockX() + angX,
+                            y - min.getBlockY() + angY,
+                            z - min.getBlockZ() + angZ
+                    );
+
                     Block block = blockLocation.getBlock();
-                    BlockData blockData = new BlockData(block.getType(), block.getBlockData(), null, null);
+                    BlockState state = block.getState();
 
-                    // Сохранение содержимого сундуков, включая двойные
-                    if (block.getState() instanceof Container container) {
-                        org.bukkit.block.Chest chest = (org.bukkit.block.Chest) container;
-                        if (chest.getInventory().getHolder() instanceof org.bukkit.inventory.DoubleChestInventory doubleChestInventory) {
+                    BlockData blockData = new BlockData(
+                            block.getType(),
+                            block.getBlockData(),
+                            null,
+                            null
+                    );
+
+                    if (state instanceof Container container) {
+                        Inventory inventory = container.getInventory();
+
+                        if (inventory.getHolder() instanceof DoubleChest doubleChest) {
                             blockData.setDoubleChest(true);
-                            org.bukkit.block.Chest leftSide = (org.bukkit.block.Chest) doubleChestInventory.getLeftSide().getHolder();
-                            org.bukkit.block.Chest rightSide = (org.bukkit.block.Chest) doubleChestInventory.getRightSide().getHolder();
+                            InventoryHolder leftHolder = doubleChest.getLeftSide();
+                            InventoryHolder rightHolder = doubleChest.getRightSide();
 
-                            if (blockLocation.equals(leftSide.getLocation())) {
-                                blockData.setContents(doubleChestInventory.getContents());
-                                blockData.setPairedChestLocation(rightSide.getLocation());
+                            if (leftHolder instanceof Chest leftChest &&
+                                    rightHolder instanceof Chest rightChest) {
+                                if (blockLocation.equals(leftChest.getLocation())) {
+                                    blockData.setContents(inventory.getContents().clone());
+                                    blockData.setPairedChestLocation(rightChest.getLocation().clone());
+                                }
                             }
                         } else {
-                            blockData.setContents(container.getInventory().getContents());
+                            blockData.setContents(inventory.getContents().clone());
                         }
+
+                        container.update();
                     }
 
-                    // Сохранение спавнеров
-                    if (block.getState() instanceof CreatureSpawner spawner) {
+                    if (state instanceof CreatureSpawner spawner) {
                         try {
                             EntityType spawnedType = spawner.getSpawnedType();
-                            blockData.setSpawnedType(spawnedType != null ? spawnedType.name() : "UNKNOWN");
+                            if (spawnedType != null) {
+                                blockData.setSpawnedType(spawnedType.name());
+                            }
+                            spawner.update();
                         } catch (Exception e) {
-                            Bukkit.getLogger().warning("[VioTrap] Ошибка при сохранении моба из спавнера: " + e.getMessage());
+                            plugin.getLogger().warning("[VioTrap] Ошибка при сохранении данных спавнера на " +
+                                    blockLocation.toString() + ": " + e.getMessage());
                         }
                     }
 
-                    replacedBlocks.put(blockLocation, blockData);
+                    if (state instanceof TileState tileState) {
+                        tileState.update();
+                    }
+
+                    replacedBlocks.put(blockLocation.clone(), blockData);
                 }
             }
         }
