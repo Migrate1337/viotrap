@@ -28,7 +28,6 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -38,9 +37,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.migrate1337.viotrap.VioTrap;
+import org.migrate1337.viotrap.actions.CustomAction;
+import org.migrate1337.viotrap.actions.CustomActionFactory;
 import org.migrate1337.viotrap.items.TrapItem;
 import org.migrate1337.viotrap.utils.CombatLogXHandler;
 import org.migrate1337.viotrap.utils.PVPManagerHandle;
+import org.bukkit.event.block.Action;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -53,13 +55,17 @@ public class TrapItemListener implements Listener {
     private final CombatLogXHandler combatLogXHandler;
     private final PVPManagerHandle pvpManagerHandler;
     private final Set<UUID> playersInTrapRegions = new HashSet<>();
+    private final Map<String, List<CustomAction>> skinActions = new HashMap<>();
 
     public TrapItemListener(VioTrap plugin) {
         this.combatLogXHandler = new CombatLogXHandler();
         this.pvpManagerHandler = new PVPManagerHandle();
         this.plugin = plugin;
-
+        for (String skin : plugin.getSkinNames()) {
+            skinActions.put(skin, CustomActionFactory.loadActions(skin, plugin));
+        }
     }
+
 
     @EventHandler
     public void onPlayerUseTrap(PlayerInteractEvent event) {
@@ -96,7 +102,7 @@ public class TrapItemListener implements Listener {
             player.sendMessage(plugin.getTrapMessageNearby());
             return;
         }
-        if(plugin.getConfig().getString("trap.enable-pvp") == "true"){
+        if (plugin.getConfig().getString("trap.enable-pvp", "true").equals("true")) {
             if (combatLogXHandler.isCombatLogXEnabled()) {
                 combatLogXHandler.tagPlayer(player, TagType.DAMAGE, TagReason.ATTACKER);
                 player.sendMessage(plugin.getConfig().getString("trap.messages.pvp-enabled"));
@@ -126,15 +132,22 @@ public class TrapItemListener implements Listener {
 
                 applyEffects(player, "skins." + skin + ".effects.player");
                 player.sendMessage(plugin.getConfig().getString("trap.messages.success_used"));
-                location.getWorld().getNearbyEntities(location, sizeX - 3, sizeY, sizeZ - 3, entity -> entity instanceof Player && !entity.equals(player))
-                        .forEach(entity -> {
-                            if (entity instanceof Player opponent) {
-                                applyEffects(opponent, "skins." + skin + ".effects.opponents");
 
-                                enablePvpForPlayer(opponent);
+                List<CustomAction> actions = skinActions.getOrDefault(skin, new ArrayList<>());
+                Player[] opponents = location.getWorld().getNearbyEntities(location, sizeX - 3, sizeY, sizeZ - 3,
+                                entity -> entity instanceof Player && !entity.equals(player))
+                        .stream()
+                        .filter(entity -> entity instanceof Player)
+                        .toArray(Player[]::new);
 
-                            }
-                        });
+                for (CustomAction action : actions) {
+                    action.execute(player, opponents, plugin);
+                }
+
+                for (Player opponent : opponents) {
+                    enablePvpForPlayer(opponent);
+                }
+
                 createTrapRegion(player, location, sizeX, sizeY, sizeZ);
                 try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(location.getWorld()))) {
                     BlockVector3 pastePosition = BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ());
@@ -149,7 +162,6 @@ public class TrapItemListener implements Listener {
                                     .ignoreAirBlocks(true)
                                     .build()
                     );
-
 
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -632,5 +644,8 @@ public class TrapItemListener implements Listener {
         public void setPairedChestLocation(Location pairedChestLocation) {
             this.pairedChestLocation = pairedChestLocation;
         }
+    }
+    public Map<String, List<CustomAction>> getSkinActions() {
+        return skinActions;
     }
 }

@@ -9,6 +9,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.migrate1337.viotrap.actions.CustomActionFactory;
 import org.migrate1337.viotrap.commands.ApplySkinCommand;
 import org.migrate1337.viotrap.commands.CreateSkinCommand;
 import org.migrate1337.viotrap.commands.GiveItemCommand;
@@ -110,29 +111,35 @@ public final class VioTrap extends JavaPlugin implements Listener {
         getConfig().options().copyDefaults(true);
         cfile = new File(getDataFolder(), "config.yml");
         saveDefaultConfig();
-        loadTrapConfig();
+
+        // Загрузка конфигураций, не зависящих от listener'ов
+        loadTrapsConfig();
+        loadPlatesConfig();
         loadPlateConfig();
         loadRevealItemConfig();
         loadDivineAuraItemConfig();
-        loadTrapsConfig();
-        loadPlatesConfig();
-        getCommand("viotrap").setExecutor(new GiveItemCommand());
-        getCommand("viotrap").setTabCompleter(new GiveItemTabCompleter());
 
+        // Инициализация listener'ов
         trapItemListener = new TrapItemListener(this);
-        getServer().getPluginManager().registerEvents(trapItemListener, this);
         plateItemListener = new PlateItemListener(this);
+        getServer().getPluginManager().registerEvents(trapItemListener, this);
         getServer().getPluginManager().registerEvents(plateItemListener, this);
         getServer().getPluginManager().registerEvents(new RevealItemListener(this), this);
-        getServer().getPluginManager().registerEvents(new PlateItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DisorientItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DivineAuraItemListener(this), this);
         getServer().getPluginManager().registerEvents(new SkinCreationMenu(this), this);
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new FirestormItemListener(this), this);
         this.getServer().getPluginManager().registerEvents(this, this);
+
+        // Регистрация команд
+        getCommand("viotrap").setExecutor(new GiveItemCommand());
+        getCommand("viotrap").setTabCompleter(new GiveItemTabCompleter());
         getCommand("createskin").setExecutor(new CreateSkinCommand(this));
         getCommand("applyskin").setExecutor(new ApplySkinCommand(this));
+
+        // Загрузка конфигурации ловушек после инициализации trapItemListener
+        loadTrapConfig();
 
         chatInputHandler = new ChatInputHandler();
         tempSkinData = new HashMap<>();
@@ -223,7 +230,16 @@ public final class VioTrap extends JavaPlugin implements Listener {
         trapSchematic = config.getString("trap.schematic");
         trapSoundType = config.getString("trap.sound.type", "BLOCK_PISTON_CONTRACT");
         trapSoundVolume = (float) config.getDouble("trap.sound.volume", 10.0);
-        trapSoundPitch =  plateSoundPitch = (float) config.getDouble("trap.sound.pitch", 1.0);
+        trapSoundPitch = (float) config.getDouble("trap.sound.pitch", 1.0);
+
+        if (trapItemListener != null) {
+            trapItemListener.getSkinActions().clear();
+            for (String skin : getSkinNames()) {
+                trapItemListener.getSkinActions().put(skin, CustomActionFactory.loadActions(skin, this));
+            }
+        } else {
+            getLogger().warning("trapItemListener is null in loadTrapConfig!");
+        }
     }
 
     public void loadPlateConfig() {
