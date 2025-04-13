@@ -139,8 +139,6 @@ public class SkinCreationMenu implements Listener {
                 case "Описание для трапки" -> handleInput(player, "desc_for_trap", "Введите описание для трапки в чат (поддерживается кодировка &):");
                 case "Тип звука" -> handleInput(player, "sound.type", "Введите тип звука (например, ENTITY_WITHER_AMBIENT):");
                 case "Тип звука (завершение)" -> handleInput(player, "sound.type-ended", "Введите тип звука при завершении (например, ENTITY_WITHER_AMBIENT):");
-                case "Эффект для противников" -> handleInput(player, "opponent_effect", "Введите эффект для противников (например, POISON 1 10):");
-                case "Эффект для игрока" -> handleInput(player, "player_effect", "Введите эффект для игрока (например, SPEED 1 10):");
                 case "Действия" -> openActionsMenu(player);
                 case "Сохранить" -> saveSkin(player);
             }
@@ -371,37 +369,6 @@ public class SkinCreationMenu implements Listener {
         plugin.getConfig().set("skins." + skinName + ".sound.volume-ended", 1.0f);
         plugin.getConfig().set("skins." + skinName + ".sound.pitch-ended", 1.0f);
 
-        String playerEffect = plugin.getTempSkinData().getOrDefault("player_effect", null);
-        if (playerEffect != null) {
-            String[] effectParts = playerEffect.split(" ");
-            if (effectParts.length == 3) {
-                try {
-                    String effectName = effectParts[0];
-                    int amplifier = Integer.parseInt(effectParts[1]);
-                    int duration = Integer.parseInt(effectParts[2]);
-                    plugin.getConfig().set("skins." + skinName + ".effects.player." + effectName + ".amplifier", amplifier);
-                    plugin.getConfig().set("skins." + skinName + ".effects.player." + effectName + ".duration", duration);
-                } catch (NumberFormatException e) {
-                    player.sendMessage("§cНекорректный формат эффекта для игрока!");
-                }
-            }
-        }
-
-        String opponentEffect = plugin.getTempSkinData().getOrDefault("opponent_effect", null);
-        if (opponentEffect != null) {
-            String[] effectParts = opponentEffect.split(" ");
-            if (effectParts.length == 3) {
-                try {
-                    String effectName = effectParts[0];
-                    int amplifier = Integer.parseInt(effectParts[1]);
-                    int duration = Integer.parseInt(effectParts[2]);
-                    plugin.getConfig().set("skins." + skinName + ".effects.opponent." + effectName + ".amplifier", amplifier);
-                    plugin.getConfig().set("skins." + skinName + ".effects.opponent." + effectName + ".duration", duration);
-                } catch (NumberFormatException e) {
-                    player.sendMessage("§cНекорректный формат эффекта для противников!");
-                }
-            }
-        }
 
         Map<String, String> actions = parseActions(plugin.getTempSkinData().getOrDefault("actions", ""));
         for (Map.Entry<String, String> actionEntry : actions.entrySet()) {
