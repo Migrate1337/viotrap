@@ -52,8 +52,7 @@ public class SkinCreationMenu implements Listener {
         inventory.setItem(4, createMenuItem(Material.BOOK, "Описание для трапки", "Текущее: " + plugin.getTempSkinData().getOrDefault("desc_for_trap", "Не задано")));
         inventory.setItem(5, createMenuItem(Material.NOTE_BLOCK, "Тип звука", "Текущий: " + plugin.getTempSkinData().getOrDefault("sound.type", "Не задано")));
         inventory.setItem(6, createMenuItem(Material.NOTE_BLOCK, "Тип звука (завершение)", "Текущий: " + plugin.getTempSkinData().getOrDefault("sound.type-ended", "Не задано")));
-        inventory.setItem(7, createMenuItem(Material.SPIDER_EYE, "Эффект для противников", "Текущий: " + plugin.getTempSkinData().getOrDefault("opponent_effect", "Не задано")));
-        inventory.setItem(8, createMenuItem(Material.GOLDEN_APPLE, "Эффект для игрока", "Текущий: " + plugin.getTempSkinData().getOrDefault("player_effect", "Не задано")));
+
         inventory.setItem(9, createMenuItem(Material.COMMAND_BLOCK, "Действия", "Настроить действия скина (" + getActionsCount() + ")"));
         inventory.setItem(17, createMenuItem(Material.GREEN_WOOL, "Сохранить", "Сохранить новый скин"));
     }
