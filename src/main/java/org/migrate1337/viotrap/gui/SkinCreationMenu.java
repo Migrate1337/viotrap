@@ -135,7 +135,7 @@ public class SkinCreationMenu implements Listener {
             inventory.setItem(i, createMenuItem(Material.PAPER,
                     ColorUtil.format("&#FFFFFFСтрока " + (i + 1)),
                     ColorUtil.format("&#AEC1F2 • ") + line, "",
-                    ColorUtil.format("&#55FF55СКМ для изменения"),
+                    ColorUtil.format("&#55FF55ЛКМ для изменения"),
                     ColorUtil.format("&#FF5555ПКМ для удаления")));
         }
         inventory.setItem(25, createMenuItem(Material.EMERALD, ColorUtil.format("&#90EE90Добавить строку"),
@@ -255,7 +255,7 @@ public class SkinCreationMenu implements Listener {
                 int index = Integer.parseInt(itemName.replace("Строка ", "")) - 1;
                 if (event.getClick() == ClickType.RIGHT) {
                     removeDescriptionLine(player, index);
-                } else if (event.getClick() == ClickType.MIDDLE) {
+                } else if (event.getClick() == ClickType.LEFT) {
                     editDescriptionLine(player, index);
                 }
             }
