@@ -7,8 +7,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.Consumer;
 import org.migrate1337.viotrap.actions.CustomActionFactory;
 import org.migrate1337.viotrap.commands.ApplySkinCommand;
 import org.migrate1337.viotrap.commands.CreateSkinCommand;
@@ -104,6 +106,8 @@ public final class VioTrap extends JavaPlugin implements Listener {
     private FileConfiguration trapsConfig;
     private FileConfiguration platesConfig;
     private File cfile;
+    private SkinCreationMenu skinCreationMenu;
+
     @Override
     public void onEnable() {
         plugin = this;
@@ -127,7 +131,11 @@ public final class VioTrap extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new RevealItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DisorientItemListener(this), this);
         getServer().getPluginManager().registerEvents(new DivineAuraItemListener(this), this);
-        getServer().getPluginManager().registerEvents(new SkinCreationMenu(this), this);
+        skinCreationMenu = new SkinCreationMenu(this);
+        skinCreationMenu = new SkinCreationMenu(this);
+        getServer().getPluginManager().registerEvents(skinCreationMenu, this);
+        getServer().getMessenger().registerOutgoingPluginChannel(this, "minecraft:client_settings");
+
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new FirestormItemListener(this), this);
         this.getServer().getPluginManager().registerEvents(this, this);
@@ -161,6 +169,9 @@ public final class VioTrap extends JavaPlugin implements Listener {
             Bukkit.getLogger().warning("[VioTrap] trapItemListener == null, restoreAllBlocks() не вызван!");
         }
         Bukkit.getLogger().info("[VioTrap] Плагин VioTrap успешно отключен.");
+    }
+    public SkinCreationMenu getSkinCreationMenu() {
+        return skinCreationMenu;
     }
     public void loadTrapsConfig() {
         trapsFile = new File(getDataFolder(), "traps.yml");
@@ -541,6 +552,7 @@ public final class VioTrap extends JavaPlugin implements Listener {
     public ChatInputHandler getChatInputHandler() {
         return chatInputHandler;
     }
+
 
     public Map<String, String> getTempSkinData() {
         return tempSkinData;
