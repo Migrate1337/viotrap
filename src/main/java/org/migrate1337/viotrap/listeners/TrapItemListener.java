@@ -159,7 +159,6 @@ public class TrapItemListener implements Listener {
                             holder
                                     .createPaste(editSession)
                                     .to(pastePosition)
-                                    .ignoreAirBlocks(true)
                                     .build()
                     );
 
@@ -260,10 +259,9 @@ public class TrapItemListener implements Listener {
         if (!plugin.getConfig().contains(configPath)) {
             return;
         }
-
         plugin.getConfig().getConfigurationSection(configPath).getKeys(false).forEach(effectName -> {
             try {
-                int duration = plugin.getTrapDuration() * 20;
+                int duration = plugin.getConfig().getInt(configPath + "." + effectName + ".duration") * 20;
                 int amplifier = plugin.getConfig().getInt(configPath + "." + effectName + ".amplifier");
                 player.addPotionEffect(new PotionEffect(PotionEffectType.getByName(effectName), duration, amplifier));
             } catch (Exception e) {
